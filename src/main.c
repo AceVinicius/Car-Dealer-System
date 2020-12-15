@@ -28,30 +28,25 @@
 #define RUNNING true
 #define STOP    false
 
-#define PADDING 6
+#define PADDING 1
+#define MARGIN  3
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+const char *k_yes_no[ ] = {
+    "No",
+    "Yes"
+};
+const int k_yes_no_size = sizeof(k_yes_no) / sizeof(char *);
 
 
 const char *k_menu_sign_in[ ] = {
     "Sign [I]n",
     "[E]xit"
 };
-const int k_menu_sign_in_size = sizeof( k_menu_sign_in ) / sizeof( char * );
-const int k_menu_sign_in_height = k_menu_sign_in_size + 6;
-
+const int k_menu_sign_in_size   = sizeof(k_menu_sign_in) / sizeof(char *);
+const int k_menu_sign_in_height = k_menu_sign_in_size + PADDING * 2;
+const int k_menu_sign_in_width  = 20 + MARGIN * 2;
 
 const char *k_menu_admin[ ] = {
     "Register [N]ew Car",
@@ -61,18 +56,18 @@ const char *k_menu_admin[ ] = {
     "[M]anagement",
     "Sign [O]ut"
 };
-const int k_menu_admin_size  = sizeof( k_menu_admin ) / sizeof( char * );
-const int k_menu_admin_height = k_menu_admin_size + PADDING;
-
+const int k_menu_admin_size   = sizeof(k_menu_admin) / sizeof( char * );
+const int k_menu_admin_height = k_menu_admin_size + PADDING * 2;
+const int k_menu_admin_width  = 21 + MARGIN * 2;
 
 const char *k_menu_admin_management[ ] = {
     "New [S]ector",
     "New [F]unctionary",
     "[B]ack"
 };
-const int k_menu_admin_management_size  = sizeof( k_menu_admin_management ) / sizeof( char * );
-const int k_menu_admin_management_height = k_menu_admin_management_size + PADDING;
-
+const int k_menu_admin_management_size   = sizeof(k_menu_admin_management) / sizeof(char *);
+const int k_menu_admin_management_height = k_menu_admin_management_size + PADDING * 2;
+const int k_menu_admin_management_width  = 20 + MARGIN * 2;
 
 const char *k_menu_user[ ] = {
     "Register [N]ew Car",
@@ -81,87 +76,50 @@ const char *k_menu_user[ ] = {
     "Schedule [R]evision",
     "Sign [O]ut"
 };
-const int k_menu_user_size  = sizeof( k_menu_user ) / sizeof( char * );
-const int k_menu_user_height = k_menu_user_size + PADDING;
-
+const int k_menu_user_size   = sizeof(k_menu_user) / sizeof(char *);
+const int k_menu_user_height = k_menu_user_size + PADDING * 2;
+const int k_menu_user_width  = 21 + MARGIN * 2;
 
 const char k_program[ ] = {
     " Car Dealer "
 };
-const int k_program_size = sizeof( k_program ) / sizeof( char );
-
-
+const int k_program_size = sizeof(k_program) / sizeof(char);
 const char k_creator[ ] = {
     " Vinicius F. Aguiar "
 };
-const int k_creator_size = sizeof( k_creator ) / sizeof( char );
-
-
-const int k_width_min = 50;
-
-
-const char k_question_database[ ] = {
-    "No database was given. Do you want to specify one?"
+const int k_creator_size = sizeof(k_creator) / sizeof(char);
+const int k_width_min = 20 + MARGIN * 2;
+const char k_database_name_error[ ] = {
+    "No database was given."
 };
 const char k_question_admin[ ] = {
     "Are you an Admin?"
 };
-// const char question_database[ ] = {
-//     "No database was given. Do you want to specify one?"
-// };
+const char k_question_data[ ] = {
+    "Are you sure the data is correct?"
+};
 const char k_fatal_error[ ] = {
     "\033[31;1mfatal error:\033[0;0m"
 };
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+MYSQL *init_api_mysql( const char *database_name );
 inline void error_api_mysql( MYSQL *connection );
 void close_api_mysql( MYSQL *connection );
-MYSQL *init_api_mysql( const char *database_name );
-static char *get_db_name_from_user( void );
-char get_yn_from_user( const char *question );
+int init_api_ncurses( void );
+void error_api_ncurses( void );
+void close_api_ncurses( void );
+
 inline bool is_admin( void );
+char get_yn_from_user( const char *question );
 char get_char_from_user( void );
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/******************************************************************************
+ ****                            APIs HANDLERS                             ****
+ ******************************************************************************/
 
 
 
@@ -186,7 +144,15 @@ init_api_mysql( const char *database_name )
     return new_connection;
 }
 
-inline void error_api_mysql( MYSQL *connection ) { fprintf(stderr, "%s\n", mysql_error(connection)); }
+
+
+inline void
+error_api_mysql( MYSQL *connection )
+{
+    fprintf(stderr, "%s\n", mysql_error(connection));
+}
+
+
 
 void
 close_api_mysql( MYSQL *connection )
@@ -198,12 +164,14 @@ close_api_mysql( MYSQL *connection )
     }
 }
 
+
+
 int
 init_api_ncurses( void )
 {
     if (has_colors())
     {
-        fprintf(stderr, "dictionary: %s your terminal does not support colors\n", k_fatal_error);
+        error_api_ncurses();
         return EXIT_FAILURE;
     }
 
@@ -212,54 +180,42 @@ init_api_ncurses( void )
     // raw();
     curs_set(0);
     start_color();
-    init_pair(1, COLOR_MAGENTA , COLOR_MAGENTA);
-    init_pair(2, COLOR_BLACK , COLOR_BLACK);
-    init_pair(3, 16          , 15);
-    init_pair(4, COLOR_RED   , 15);
-    init_pair(5, COLOR_BLACK , 16);
-    init_pair(6, COLOR_WHITE , 16);
+    init_pair(1, COLOR_MAGENTA, COLOR_MAGENTA);
+    init_pair(2, COLOR_BLACK, COLOR_BLACK);
+    init_pair(3, COLOR_BLACK, COLOR_WHITE);
+    init_pair(4, COLOR_RED, COLOR_WHITE);
+    init_pair(5, 8, COLOR_BLACK);
+    init_pair(6, COLOR_WHITE, COLOR_BLACK);
+    init_pair(7, COLOR_RED, COLOR_BLACK);
 
     return EXIT_SUCCESS;
 }
 
 
 
+inline void
+error_api_ncurses( void )
+{
+    fprintf(stderr, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error);
+}
 
 
 
+void
+close_api_ncurses( void )
+{
+    endwin();
+}
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+/******************************************************************************
+ ****                                                                      ****
+ ******************************************************************************/
 
 
 
 inline bool is_admin( void ) { return get_yn_from_user(k_question_admin) == 'Y'; }
-
-static char *
-get_db_name_from_user( void )
-{
-    char *database_name = (char *) malloc(sizeof(char) * 20);
-    char  answer = get_yn_from_user(k_question_database);
-
-    if (answer == 'N') exit(EXIT_SUCCESS);
-
-    printf("What's the database name? ");
-    scanf(" %s", database_name);
-
-    return database_name;
-}
 
 
 
@@ -293,24 +249,11 @@ get_char_from_user( void )
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /******************************************************************************
  ****                         SCREEN OUTPUT LAYOUT                         ****
  ******************************************************************************/
+
+
 
 WINDOW *
 create_basic_layout( const int min_y, const int min_x )
@@ -327,36 +270,48 @@ create_basic_layout( const int min_y, const int min_x )
     const int start_y   = padding_y / 2;
     const int start_x   = padding_x / 2;
 
-    WINDOW *content = newwin(height, width, start_y, start_x);
-    WINDOW *shadow  = newwin(height, width, start_y + 1, start_x + 1);
-
     bkgd(COLOR_PAIR(1));
-    wbkgd(shadow, COLOR_PAIR(2));
-    wbkgd(content, COLOR_PAIR(3));
-
-    box(content, 0, 0);
-    wattron(content, COLOR_PAIR(4));
-    mvwprintw(content, 0, (width - k_program_size) / 2, k_program);
-    mvwprintw(content, height - 1, width - k_creator_size - 2, k_creator);
-    wattroff(content, COLOR_PAIR(4));
-
     refresh();
+    
+    WINDOW *shadow = newwin(height + 2, width + 2, start_y + 1, start_x + 1);
+    wbkgd(shadow, COLOR_PAIR(2));
     wrefresh(shadow);
+
+    WINDOW *border = newwin(height + 2, width + 2, start_y, start_x);
+    wbkgd(border , COLOR_PAIR(3));
+    box(border, 0, 0);
+    wattron(border, COLOR_PAIR(4));
+    mvwprintw(border, 0         , (width + 2 - k_program_size) / 2, k_program);
+    mvwprintw(border, height + 1,  width     - k_creator_size     , k_creator);
+    wattroff(border, COLOR_PAIR(4));
+    wrefresh(border);
+
+    WINDOW *content = newwin(height    , width    , start_y + 1, start_x + 1);
+    wbkgd(content, COLOR_PAIR(3));
     wrefresh(content);
 
     return content;
 }
 
+
+
+bool
+screen_no_yes( void )
+{
+    return true;
+}
+
+
+
 int
 screen_sign_in( void )
 {
-    int  choice;
     int  highlight = 0;
     bool status    = RUNNING;
 
     while (status)
     {
-        WINDOW *content = create_basic_layout(k_menu_sign_in_height, k_width_min);
+        WINDOW *content = create_basic_layout(k_menu_sign_in_height, k_menu_sign_in_width);
         keypad(content, true);
 
         for (int i = 0; i < k_menu_sign_in_size; ++i)
@@ -365,13 +320,11 @@ screen_sign_in( void )
             {
                 wattron(content, COLOR_PAIR(4));
             }
-            mvwprintw(content, i+3, 4, k_menu_sign_in[ i ]);
+            mvwprintw(content, PADDING + i, MARGIN, k_menu_sign_in[ i ]);
             wattroff(content, COLOR_PAIR(4));
         }
 
-        choice = wgetch(content);
-
-        switch (choice)
+        switch (wgetch(content))
         {
             case KEY_UP:
                 if (highlight > 0) highlight--;
@@ -389,16 +342,17 @@ screen_sign_in( void )
     return highlight;
 }
 
+
+
 int
 screen_menu_admin( void )
 {
-    int  choice;
     int  highlight = 0;
     bool status    = RUNNING;
 
     while (status)
     {
-        WINDOW *content = create_basic_layout(k_menu_admin_height, k_width_min);
+        WINDOW *content = create_basic_layout(k_menu_admin_height, k_menu_admin_width);
         keypad(content, true);
 
         for (int i = 0; i < k_menu_admin_size; ++i)
@@ -407,13 +361,11 @@ screen_menu_admin( void )
             {
                 wattron(content, COLOR_PAIR(4));
             }
-            mvwprintw(content, i+PADDING/2, 4, k_menu_admin[ i ]);
+            mvwprintw(content, PADDING + i, MARGIN, k_menu_admin[ i ]);
             wattroff(content, COLOR_PAIR(4));
         }
 
-        choice = wgetch(content);
-
-        switch (choice)
+        switch (wgetch(content))
         {
             case KEY_UP:
                 if (highlight > 0) highlight--;
@@ -435,16 +387,17 @@ screen_menu_admin( void )
     return highlight;
 }
 
+
+
 int
 screen_menu_user( void )
 {
-    int  choice;
     int  highlight = 0;
     bool status    = RUNNING;
 
     while (status)
     {
-        WINDOW *content = create_basic_layout(k_menu_user_height, k_width_min);
+        WINDOW *content = create_basic_layout(k_menu_user_height, k_menu_user_width);
         keypad(content, true);
 
         for (int i = 0; i < k_menu_user_size; ++i)
@@ -453,13 +406,11 @@ screen_menu_user( void )
             {
                 wattron(content, COLOR_PAIR(4));
             }
-            mvwprintw(content, i+PADDING/2, 4, k_menu_user[ i ]);
+            mvwprintw(content, PADDING + i, MARGIN, k_menu_user[ i ]);
             wattroff(content, COLOR_PAIR(4));
         }
 
-        choice = wgetch(content);
-
-        switch (choice)
+        switch (wgetch(content))
         {
             case KEY_UP:
                 if (highlight > 0) highlight--;
@@ -482,106 +433,158 @@ screen_menu_user( void )
 
 
 
+int
+screen_new_car( void )
+{
+    WINDOW *content = create_basic_layout(12, 40);
+
+    mvwprintw(content, 1, (41 - 20) / 2, "Registering New Car");
+
+    mvwprintw(content,  3,  4, "Brand");
+    mvwprintw(content,  6,  4, "Model");
+    mvwprintw(content,  9,  4, "Year");
+    mvwprintw(content,  9, 13, "Plate");
+    mvwprintw(content,  9, 26, "New");
+    wattron(content, COLOR_PAIR(5));
+    mvwprintw(content,  4,  4, "                                ");
+    mvwprintw(content,  7,  4, "                                ");
+    mvwprintw(content, 10,  4, " 1234 ");
+    mvwprintw(content, 10, 13, " ABC-1234 ");
+    mvwprintw(content, 10, 26, " No ");
+    mvwprintw(content, 10, 31, " Yes ");
+    wattroff(content, COLOR_PAIR(5));
+    wrefresh(content);
+
+    char brand[ 31 ];
+    char model[ 31 ];
+    short year;
+    char plate[ 8 ];
+    int  highlight = 0;
+    bool status    = RUNNING;
+    bool is_new;
+
+    keypad(content, true);
+    curs_set(1);
+    wattron(content, COLOR_PAIR(6));
+    mvwscanw(content,  4,  5, " %s", brand);
+    mvwscanw(content,  7,  5, " %s", model);
+    mvwscanw(content, 10,  5, " %d", &year);
+    mvwscanw(content, 10, 14, " %s", plate);
+    wattroff(content, COLOR_PAIR(6));
+    curs_set(0);
+    wrefresh(content);
+
+    while (status)
+    {
+
+        for (int i = 0; i < k_yes_no_size; ++i)
+        {
+            wattron(content, COLOR_PAIR(5));
+            if (i == highlight)
+            {
+                wattron(content, COLOR_PAIR(7));
+            }
+            mvwprintw(content, 10, 5 * i + 27, k_yes_no[ i ]);
+            wattroff(content, COLOR_PAIR(7));
+        }
+        wattron(content, COLOR_PAIR(5));
+
+        switch (wgetch(content))
+        {
+            case KEY_LEFT:
+                if (highlight > 0) highlight--;
+                break;
+            case KEY_RIGHT:
+                if (highlight < k_yes_no_size - 1) highlight++;
+                break;
+            case 'N': case 'n': highlight = 0; break;
+            case 'Y': case 'y': highlight = 1; break;
+            case '\n':          status = STOP; break;
+            default: break;
+        }
+    }
+
+    // mvwscanw(content,  8,  5, " %c", );
+
+    //Fazer a query aqui
+
+    return EXIT_SUCCESS;
+}
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/******************************************************************************
+ ****                                 MAIN                                 ****
+ ******************************************************************************/
 
 
 
 int
 main( const int argc, const char **argv )
 {
-    MYSQL *connection = NULL;
+    if (argc == 1)          return EXIT_FAILURE;
+    if (init_api_ncurses()) return EXIT_FAILURE;
 
-    if (init_api_ncurses())
+    MYSQL *connection = init_api_mysql(argv[ 1 ]);
+    if (connection == NULL)
     {
         return EXIT_FAILURE;
     }
-    
-    if (argc == 1)
-    {
-        connection = init_api_mysql(get_db_name_from_user());
-    }
-    else
-    {
-        connection = init_api_mysql(argv[ 1 ]);
-    }
 
-
-    bool admin = 0;
-    bool state = RUNNING;
-
-    switch (screen_sign_in())
-    {
-        case 0: state = RUNNING; break;
-        case 1: state = STOP;    break;
-        default: break;
-    }
+    bool   logged_in  = STOP;
+    bool   state      = RUNNING;
     
     while (state)
     {
-        admin = is_admin();
-
-        do
+        bool a = false;
+        
+        switch (screen_sign_in())
         {
-            if (admin)
+            case 0: logged_in = true; a = is_admin(); break;
+            case 1: state     = STOP; break;
+            default: break;
+        }
+
+        while(logged_in)
+        {
+            int error = 0;
+
+            if (a)
             {
                 switch (screen_menu_admin())
                 {
-                    case 0:  break;
+                    case 0: error = screen_new_car(); break;
                     case 1:  break;
                     case 2:  break;
                     case 3:  break;
                     case 4:  break;
-                    case 5: state = STOP; break;
+                    case 5: logged_in = false; break;
                     default: break;
                 }
+
+                if (error)
+                {}
             }
             else
             {
                 switch (screen_menu_user())
                 {
-                    case 0: 
-                     break;
+                    case 0: error = screen_new_car(); break;
                     case 1:  break;
                     case 2:  break;
                     case 3:  break;
-                    case 4: state = STOP; break;
+                    case 4: logged_in = false; break;
                     default: break;
                 }
-            }
-        }
-        while(state);
 
-        switch (screen_sign_in())
-        {
-            case 0: state = RUNNING; break;
-            case 1: state = STOP;    break;
-            default: break;
+                if (error)
+                {}
+            }
         }
     }
 
     close_api_mysql(connection);
-    endwin();
+    close_api_ncurses();
 
     return EXIT_SUCCESS;
 }
