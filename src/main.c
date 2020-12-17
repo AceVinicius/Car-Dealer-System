@@ -1,15 +1,16 @@
 /**
  * @author Vinícius Ferreira Aguiar (acevinicius@outlook.com)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2020-12-06
- * 
+ *
  * @copyright Copyright (c) 2020
- * 
+ *
  */
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
 #include <mysql/mysql.h>
@@ -143,17 +144,13 @@ init_api_mysql( const char *database_name )
         close_api_mysql(new_connection);
         return NULL;
     }
-    
+
     return new_connection;
 }
 
 
 
-inline void
-error_api_mysql( MYSQL *connection )
-{
-    fprintf(stderr, "%s\n", mysql_error(connection));
-}
+inline void error_api_mysql( MYSQL *connection ) { fprintf(stderr, "%s\n", mysql_error(connection)); }
 
 
 
@@ -196,59 +193,11 @@ init_api_ncurses( void )
 
 
 
-inline void
-error_api_ncurses( void )
-{
-    fprintf(stderr, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error);
-}
+inline void error_api_ncurses( void ) { fprintf(stderr, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error); }
 
 
 
-void
-close_api_ncurses( void )
-{
-    endwin();
-}
-
-
-
-/******************************************************************************
- ****                                                                      ****
- ******************************************************************************/
-
-
-
-inline bool is_admin( void ) { return get_yn_from_user(k_question_admin) == 'Y'; }
-
-
-
-char
-get_yn_from_user( const char *question )
-{
-    char answer;
-
-    do
-    {
-        printf("%s [Y/n] ", question);
-        answer = get_char_from_user();
-    }
-    while (answer != 'Y' && answer != 'N');
-
-    return answer;
-}
-
-
-
-char
-get_char_from_user( void )
-{
-    char character;
-
-    scanf(" %c%*c", &character);
-    character = toupper(character);
-
-    return character;
-}
+inline void close_api_ncurses( void ) { endwin(); }
 
 
 
@@ -276,8 +225,8 @@ create_basic_layout( const int min_y, const int min_x )
     WINDOW *shadow  = newwin(height + 2, width + 2, start_y + 1, start_x + 1);
     WINDOW *border  = newwin(height + 2, width + 2, start_y    , start_x);
     WINDOW *content = newwin(height    , width    , start_y + 1, start_x + 1);
-    
-    bkgd(COLOR_PAIR(1)); 
+
+    bkgd(COLOR_PAIR(1));
     wbkgd(shadow, COLOR_PAIR(2));
     wbkgd(border , COLOR_PAIR(3));
     box(border, 0, 0);
@@ -286,8 +235,8 @@ create_basic_layout( const int min_y, const int min_x )
     mvwprintw(border, height + 1,  width     - k_creator_size     , k_creator);
     wattroff(border, COLOR_PAIR(4));
     wbkgd(content, COLOR_PAIR(3));
-    
-    refresh(); 
+
+    refresh();
     wrefresh(shadow);
     wrefresh(border);
     wrefresh(content);
@@ -368,7 +317,7 @@ screen_sign_in( void )
             mvwprintw(content, PADDING + i, MARGIN, k_menu_sign_in[ i ]);
             wattroff(content, COLOR_PAIR(4));
         }
-        
+
         switch (wgetch(content))
         {
             case KEY_UP:
@@ -379,7 +328,7 @@ screen_sign_in( void )
                 break;
             case 'I': case 'i': highlight = 0; break;
             case 'E': case 'e': highlight = 1; break;
-            case KEY_ENTER:     status = STOP; break;
+            case '\n':          status = STOP; break;
             default: break;
         }
     }
@@ -483,7 +432,7 @@ screen_new_car( void )
 {
     char  brand[ 31 ];
     char  model[ 31 ];
-    char  plate[ 8 ];
+    char  plate[ 9 ];
     bool  is_new;
     short year;
 
@@ -508,10 +457,14 @@ screen_new_car( void )
 
         curs_set(1);
         wattron(content, COLOR_PAIR(6));
-        mvwscanw(content,  4,  5, " %s", brand);
-        mvwscanw(content,  7,  5, " %s", model);
-        mvwscanw(content, 10,  5, " %d", &year);
-        mvwscanw(content, 10, 14, " %s", plate);
+        mvwscanw(content,   4,  5, " %30s", brand);
+        mvwscanw(content,   7,  5, " %30s", model);
+        mvwprintw(content, 10,  4, "      ");
+        wrefresh(content);
+        mvwscanw(content,  10,  5,  " %4d", &year);
+        mvwprintw(content, 10, 13, "          ");
+        wrefresh(content);
+        mvwscanw(content, 10, 14, " %8s", plate);
         wattroff(content, COLOR_PAIR(6));
         curs_set(0);
         wrefresh(content);
@@ -520,7 +473,57 @@ screen_new_car( void )
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    //Fazer a query aqui
+    // Fazer a query aqui
+
+    return EXIT_SUCCESS;
+}
+
+
+
+int
+screen_sell( void )
+{
+    char  brand[ 31 ] = "*";
+    char  model[ 31 ] = "*";
+    char  plate[ 8 ] = "*";
+    short year = -1;
+
+    WINDOW *content = create_basic_layout(12, 40);
+    keypad(content, true);
+
+    // mvwprintw(content, 1, (41 - 4) / 2, "Sell");
+
+    mvwprintw(content,  3,  4, "Brand");
+    mvwprintw(content,  6,  4, "Model");
+    mvwprintw(content,  9,  4, "Year");
+    mvwprintw(content,  9, 13, "Plate");
+    wattron(content, COLOR_PAIR(5));
+    mvwprintw(content,  4,  4, "                                ");
+    mvwprintw(content,  7,  4, "                                ");
+    mvwprintw(content, 10,  4, " 1234 ");
+    mvwprintw(content, 10, 13, " ABC-1234 ");
+    wattroff(content, COLOR_PAIR(5));
+    wrefresh(content);
+
+    curs_set(1);
+    wattron(content, COLOR_PAIR(6));
+    mvwscanw(content,  4,  5, " %30s%*s", brand);
+    mvwscanw(content,  7,  5, " %30s%*s", model);
+    mvwprintw(content, 10,  4, "      ");
+    wrefresh(content);
+    mvwscanw(content, 10,  5, " %4d%*d", &year);
+    mvwprintw(content, 10, 13, "          ");
+    wrefresh(content);
+    mvwscanw(content, 10, 14, " %8s%*s", plate);
+    wattroff(content, COLOR_PAIR(6));
+    wrefresh(content);
+    curs_set(0);
+
+    bool is_new = screen_yes_no(k_question_new_car, k_question_new_car_size);
+
+    // if all the fields get an overflow, the model will not print anything
+
+    // Fazer a query aqui
 
     return EXIT_SUCCESS;
 }
@@ -545,13 +548,13 @@ main( const int argc, const char **argv )
         return EXIT_FAILURE;
     }
 
-    bool   logged_in  = STOP;
-    bool   state      = RUNNING;
-    
+    bool logged_in = STOP;
+    bool state     = RUNNING;
+
     while (state)
     {
         bool admin = false;
-        
+
         switch (screen_sign_in())
         {
             case 0:
@@ -572,12 +575,12 @@ main( const int argc, const char **argv )
             {
                 switch (screen_menu_admin())
                 {
-                    case 0: error = screen_new_car(); break;
-                    case 1:  break;
-                    case 2:  break;
-                    case 3:  break;
-                    case 4:  break;
-                    case 5: logged_in = false; break;
+                    case 0: error = screen_new_car();    break;
+                    case 1: error = screen_sell();       break;
+                    case 2: /* error = screen_trade(); */     break;
+                    case 3: /* error = screen_revision(); */  break;
+                    case 4: /* error = screen_management(); */ break;
+                    case 5: logged_in = false;           break;
                     default: break;
                 }
 
@@ -588,11 +591,11 @@ main( const int argc, const char **argv )
             {
                 switch (screen_menu_user())
                 {
-                    case 0: error = screen_new_car(); break;
-                    case 1:  break;
-                    case 2:  break;
-                    case 3:  break;
-                    case 4: logged_in = false; break;
+                    case 0: error = screen_new_car();  break;
+                    case 1: error = screen_sell();     break;
+                    case 2: /* error = screen_trade(); */   break;
+                    case 3: /* error = screen_revision(); */ break;
+                    case 4: /* logged_in = false; */        break;
                     default: break;
                 }
 
