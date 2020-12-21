@@ -7,117 +7,13 @@
  * @copyright Copyright (c) 2020
  *
  */
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
 #include <mysql/mysql.h>
 
-#define RUNNING true
-#define STOP    false
-
-#define PADDING 1
-#define MARGIN  3
-
-
-
-const char *k_yes_no[ ] = {
-    "No",
-    "Yes"
-};
-const int k_yes_no_size   = sizeof(k_yes_no) / sizeof(char *);
-const int k_yes_no_height = k_yes_no_size + PADDING * 2;
-const int k_yes_no_width  = 4 + MARGIN * 2;
-
-const char *k_menu_sign_in[ ] = {
-    "Sign [I]n",
-    "[E]xit"
-};
-const int k_menu_sign_in_size   = sizeof(k_menu_sign_in) / sizeof(char *);
-const int k_menu_sign_in_height = k_menu_sign_in_size + PADDING * 2;
-const int k_menu_sign_in_width  = 20 + MARGIN * 2;
-
-const char *k_menu_admin[ ] = {
-    "Register [N]ew Car",
-    "[S]ell",
-    "[T]rade",
-    "Schedule [R]evision",
-    "[M]anagement",
-    "Sign [O]ut"
-};
-const int k_menu_admin_size   = sizeof(k_menu_admin) / sizeof( char * );
-const int k_menu_admin_height = k_menu_admin_size + PADDING * 2;
-const int k_menu_admin_width  = 21 + MARGIN * 2;
-
-const char *k_menu_admin_management[ ] = {
-    "New [S]ector",
-    "New [F]unctionary",
-    "[B]ack"
-};
-const int k_menu_admin_management_size   = sizeof(k_menu_admin_management) / sizeof(char *);
-const int k_menu_admin_management_height = k_menu_admin_management_size + PADDING * 2;
-const int k_menu_admin_management_width  = 20 + MARGIN * 2;
-
-const char *k_menu_user[ ] = {
-    "Register [N]ew Car",
-    "[S]ell",
-    "[T]rade",
-    "Schedule [R]evision",
-    "Sign [O]ut"
-};
-const int k_menu_user_size   = sizeof(k_menu_user) / sizeof(char *);
-const int k_menu_user_height = k_menu_user_size + PADDING * 2;
-const int k_menu_user_width  = 21 + MARGIN * 2;
-
-const char k_program[ ] = {
-    " Car Dealer "
-};
-const int k_program_size = sizeof(k_program) / sizeof(char);
-const char k_creator[ ] = {
-    " Vinicius F. Aguiar "
-};
-const int k_creator_size = sizeof(k_creator) / sizeof(char);
-
-const int k_width_min = 20 + MARGIN * 2;
-
-const char k_database_name_error[ ] = {
-    "No database was given."
-};
-const int k_database_name_error_size = sizeof(k_database_name_error) / sizeof(char);
-
-const char k_question_admin[ ] = {
-    "Are you an Admin?"
-};
-const int k_question_admin_size = sizeof(k_question_admin) / sizeof(char);
-
-const char k_question_data[ ] = {
-    "Are you sure the data is correct?"
-};
-const int k_question_data_size = sizeof(k_question_data) / sizeof(char);
-
-const char k_question_new_car[ ] = {
-    "Is the car new?"
-};
-const int k_question_new_car_size = sizeof(k_question_new_car) / sizeof(char);
-
-const char k_fatal_error[ ] = {
-    "\033[31;1mfatal error:\033[0;0m"
-};
-
-
-
-MYSQL *init_api_mysql( const char *database_name );
-inline void error_api_mysql( MYSQL *connection );
-void close_api_mysql( MYSQL *connection );
-int init_api_ncurses( void );
-void error_api_ncurses( void );
-void close_api_ncurses( void );
-
-inline bool is_admin( void );
-char get_yn_from_user( const char *question );
-char get_char_from_user( void );
+#include "../lib/headers/main.h"
 
 
 
@@ -134,7 +30,6 @@ init_api_mysql( const char *database_name )
     if (new_connection == NULL)
     {
         error_api_mysql(new_connection);
-        close_api_mysql(new_connection);
         return NULL;
     }
 
@@ -202,7 +97,7 @@ inline void close_api_ncurses( void ) { endwin(); }
 
 
 /******************************************************************************
- ****                         SCREEN OUTPUT LAYOUT                         ****
+ ****                                 MAIN                                 ****
  ******************************************************************************/
 
 
@@ -223,8 +118,25 @@ create_basic_layout( const int min_y, const int min_x )
     const int start_x   = padding_x / 2;
 
     WINDOW *shadow  = newwin(height + 2, width + 2, start_y + 1, start_x + 1);
+    if (shadow == NULL)
+    {
+        return NULL;
+    }
+
     WINDOW *border  = newwin(height + 2, width + 2, start_y    , start_x);
+    if (shadow == NULL)
+    {
+        free(shadow);
+        return NULL;
+    }
+
     WINDOW *content = newwin(height    , width    , start_y + 1, start_x + 1);
+    if (shadow == NULL)
+    {
+        free(shadow);
+        free(border);
+        return NULL;
+    }
 
     bkgd(COLOR_PAIR(1));
     wbkgd(shadow, COLOR_PAIR(2));
@@ -246,7 +158,7 @@ create_basic_layout( const int min_y, const int min_x )
 
 
 
-bool
+short
 screen_yes_no( const char *question, const int question_size )
 {
     const int width     = question_size + MARGIN * 2;
@@ -259,6 +171,11 @@ screen_yes_no( const char *question, const int question_size )
     while (status)
     {
         WINDOW *content = create_basic_layout(height, width);
+        if (content ==  NULL)
+        {
+            return -1; 
+        }
+
         keypad(content, true);
         mvwprintw(content, 1, MARGIN, question);
 
@@ -306,6 +223,11 @@ screen_sign_in( void )
     while (status)
     {
         WINDOW *content = create_basic_layout(height, width);
+        if (content == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+
         keypad(content, true);
 
         for (int i = 0; i < menu_size; ++i)
@@ -347,6 +269,11 @@ screen_menu_admin( void )
     while (status)
     {
         WINDOW *content = create_basic_layout(k_menu_admin_height, k_menu_admin_width);
+        if (content == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+        
         keypad(content, true);
 
         for (int i = 0; i < k_menu_admin_size; ++i)
@@ -392,6 +319,11 @@ screen_menu_user( void )
     while (status)
     {
         WINDOW *content = create_basic_layout(k_menu_user_height, k_menu_user_width);
+        if (content == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+        
         keypad(content, true);
 
         for (int i = 0; i < k_menu_user_size; ++i)
@@ -439,6 +371,11 @@ screen_new_car( void )
     do
     {
         WINDOW *content = create_basic_layout(12, 40);
+        if (content == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+
         keypad(content, true);
 
         mvwprintw(content, 1, (41 - 20) / 2, "Registering New Car");
@@ -469,6 +406,8 @@ screen_new_car( void )
         curs_set(0);
         wrefresh(content);
 
+        // if all the fields get an overflow, the model will not print anything
+        
         is_new = screen_yes_no(k_question_new_car, k_question_new_car_size);
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
@@ -489,9 +428,14 @@ screen_sell( void )
     short year = -1;
 
     WINDOW *content = create_basic_layout(12, 40);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+    
     keypad(content, true);
 
-    // mvwprintw(content, 1, (41 - 4) / 2, "Sell");
+    mvwprintw(content, 1, (41 - 4) / 2, "Sell");
 
     mvwprintw(content,  3,  4, "Brand");
     mvwprintw(content,  6,  4, "Model");
@@ -548,7 +492,7 @@ main( const int argc, const char **argv )
         return EXIT_FAILURE;
     }
 
-    bool logged_in = STOP;
+    bool logged_in = false;
     bool state     = RUNNING;
 
     while (state)
@@ -585,7 +529,9 @@ main( const int argc, const char **argv )
                 }
 
                 if (error)
-                {}
+                {
+                    
+                }
             }
             else
             {
