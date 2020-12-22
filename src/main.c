@@ -9,6 +9,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <ncurses.h>
 #include <mysql/mysql.h>
@@ -139,15 +140,19 @@ create_basic_layout( const int min_y, const int min_x )
     }
 
     bkgd(COLOR_PAIR(1));
+    
     wbkgd(shadow, COLOR_PAIR(2));
-    wbkgd(border , COLOR_PAIR(3));
+    
+    wbkgd(border, COLOR_PAIR(3));
     box(border, 0, 0);
     wattron(border, COLOR_PAIR(4));
     mvwprintw(border, 0         , (width + 2 - k_program_size) / 2, k_program);
     mvwprintw(border, height + 1,  width     - k_creator_size     , k_creator);
     wattroff(border, COLOR_PAIR(4));
+    
     wbkgd(content, COLOR_PAIR(3));
 
+    // Do not change this order
     refresh();
     wrefresh(shadow);
     wrefresh(border);
@@ -158,12 +163,66 @@ create_basic_layout( const int min_y, const int min_x )
 
 
 
+void
+template_print_car_info( WINDOW *content, const char *title, const int start_x, const int start_y )
+{
+    const int size = strlen(title);
+
+    // Title
+    mvwprintw(content, 11 * start_y +  1, 38 * start_x + (41 - size) / 2, title);
+
+    // Field Names
+    mvwprintw(content, 11 * start_y +  3, 38 * start_x +  4, "Brand");
+    mvwprintw(content, 11 * start_y +  6, 38 * start_x +  4, "Model");
+    mvwprintw(content, 11 * start_y +  9, 38 * start_x +  4, "Year");
+    mvwprintw(content, 11 * start_y +  9, 38 * start_x + 13, "Plate");
+
+    // Placeholders
+    wattron(content, COLOR_PAIR(5));
+    mvwprintw(content, 11 * start_y +  4, 38 * start_x +  4, " Ford                           ");
+    mvwprintw(content, 11 * start_y +  7, 38 * start_x +  4, " Mustang GT                     ");
+    mvwprintw(content, 11 * start_y + 10, 38 * start_x +  4, " 2018 ");
+    mvwprintw(content, 11 * start_y + 10, 38 * start_x + 13, " ABC-1234 ");
+    wattroff(content, COLOR_PAIR(5));
+
+    wrefresh(content);
+}
+
+
+
+void
+template_get_car_info( WINDOW *content, const int start_x, const int start_y, char *brand, char *model, short *year, char *plate )
+{
+    curs_set(1);
+
+    // If all the fields get an overflow, the model will not print anything
+    wattron(content, COLOR_PAIR(6));
+    mvwprintw(content, 11 * start_y +  4, 38 * start_x +  4, "                                ");
+    wrefresh(content);
+    mvwscanw(content,  11 * start_y +  4, 38 * start_x +  5, " %30s%*s", brand);
+    mvwprintw(content, 11 * start_y +  7, 38 * start_x +  4, "                                ");
+    wrefresh(content);
+    mvwscanw(content,  11 * start_y +  7, 38 * start_x +  5, " %30s%*s", model);
+    mvwprintw(content, 11 * start_y + 10, 38 * start_x +  4, "      ");
+    wrefresh(content);
+    mvwscanw(content,  11 * start_y + 10, 38 * start_x +  5, " %4d%*d", &year);
+    mvwprintw(content, 11 * start_y + 10, 38 * start_x + 13, "          ");
+    wrefresh(content);
+    mvwscanw(content,  11 * start_y + 10, 38 * start_x + 14, " %8s%*s", plate);
+    wattroff(content, COLOR_PAIR(6));
+
+    curs_set(0);
+    wrefresh(content);
+}
+
+
+
 short
 screen_yes_no( const char *question, const int question_size )
 {
-    const int width     = question_size + MARGIN * 2;
-    const int height    = 5;
-    const int menu_size = 2;
+    const int width  = question_size + MARGIN * 2;
+    const int height = 5;
+    const int size   = 2;
 
     int  highlight = 0;
     bool status    = RUNNING;
@@ -179,7 +238,7 @@ screen_yes_no( const char *question, const int question_size )
         keypad(content, true);
         mvwprintw(content, 1, MARGIN, question);
 
-        for (int i = 0; i < menu_size; ++i)
+        for (int i = 0; i < size; ++i)
         {
             if (i == highlight)
             {
@@ -196,7 +255,7 @@ screen_yes_no( const char *question, const int question_size )
                 if (highlight > 0) highlight--;
                 break;
             case KEY_RIGHT:
-                if (highlight < menu_size - 1) highlight++;
+                if (highlight < size - 1) highlight++;
                 break;
             case 'N': case 'n': highlight = 0; break;
             case 'Y': case 'y': highlight = 1; break;
@@ -211,78 +270,31 @@ screen_yes_no( const char *question, const int question_size )
 
 
 int
-screen_sign_in( void )
+screen_menu( const char **menu, const int size )
 {
+    const int height = size + PADDING * 2;
+    const int width  = 22 + MARGIN * 2;
+
     int  highlight = 0;
     bool status    = RUNNING;
-
-    const int width     = k_menu_sign_in_width;
-    const int height    = k_menu_sign_in_height;
-    const int menu_size = k_menu_sign_in_size;
 
     while (status)
     {
         WINDOW *content = create_basic_layout(height, width);
         if (content == NULL)
         {
-            return EXIT_FAILURE;
-        }
-
-        keypad(content, true);
-
-        for (int i = 0; i < menu_size; ++i)
-        {
-            if (i == highlight)
-            {
-                wattron(content, COLOR_PAIR(4));
-            }
-            mvwprintw(content, PADDING + i, MARGIN, k_menu_sign_in[ i ]);
-            wattroff(content, COLOR_PAIR(4));
-        }
-
-        switch (wgetch(content))
-        {
-            case KEY_UP:
-                if (highlight > 0) highlight--;
-                break;
-            case KEY_DOWN:
-                if (highlight < menu_size - 1) highlight++;
-                break;
-            case 'I': case 'i': highlight = 0; break;
-            case 'E': case 'e': highlight = 1; break;
-            case '\n':          status = STOP; break;
-            default: break;
-        }
-    }
-
-    return highlight;
-}
-
-
-
-int
-screen_menu_admin( void )
-{
-    int  highlight = 0;
-    bool status    = RUNNING;
-
-    while (status)
-    {
-        WINDOW *content = create_basic_layout(k_menu_admin_height, k_menu_admin_width);
-        if (content == NULL)
-        {
-            return EXIT_FAILURE;
+            return -1;
         }
         
         keypad(content, true);
 
-        for (int i = 0; i < k_menu_admin_size; ++i)
+        for (int i = 0; i < size; ++i)
         {
             if (i == highlight)
             {
                 wattron(content, COLOR_PAIR(4));
             }
-            mvwprintw(content, PADDING + i, MARGIN, k_menu_admin[ i ]);
+            mvwprintw(content, PADDING + i, MARGIN, menu[ i ]);
             wattroff(content, COLOR_PAIR(4));
         }
 
@@ -292,63 +304,8 @@ screen_menu_admin( void )
                 if (highlight > 0) highlight--;
                 break;
             case KEY_DOWN:
-                if (highlight < k_menu_admin_size - 1) highlight++;
+                if (highlight < size - 1) highlight++;
                 break;
-            case 'N': case 'n': highlight = 0; break;
-            case 'S': case 's': highlight = 1; break;
-            case 'T': case 't': highlight = 2; break;
-            case 'R': case 'r': highlight = 3; break;
-            case 'M': case 'm': highlight = 4; break;
-            case 'O': case 'o': highlight = 5; break;
-            case '\n':          status = STOP; break;
-            default: break;
-        }
-    }
-
-    return highlight;
-}
-
-
-
-int
-screen_menu_user( void )
-{
-    int  highlight = 0;
-    bool status    = RUNNING;
-
-    while (status)
-    {
-        WINDOW *content = create_basic_layout(k_menu_user_height, k_menu_user_width);
-        if (content == NULL)
-        {
-            return EXIT_FAILURE;
-        }
-        
-        keypad(content, true);
-
-        for (int i = 0; i < k_menu_user_size; ++i)
-        {
-            if (i == highlight)
-            {
-                wattron(content, COLOR_PAIR(4));
-            }
-            mvwprintw(content, PADDING + i, MARGIN, k_menu_user[ i ]);
-            wattroff(content, COLOR_PAIR(4));
-        }
-
-        switch (wgetch(content))
-        {
-            case KEY_UP:
-                if (highlight > 0) highlight--;
-                break;
-            case KEY_DOWN:
-                if (highlight < k_menu_user_size - 1) highlight++;
-                break;
-            case 'N': case 'n': highlight = 0; break;
-            case 'S': case 's': highlight = 1; break;
-            case 'T': case 't': highlight = 2; break;
-            case 'R': case 'r': highlight = 3; break;
-            case 'O': case 'o': highlight = 5; break;
             case '\n':          status = STOP; break;
             default: break;
         }
@@ -378,35 +335,8 @@ screen_new_car( void )
 
         keypad(content, true);
 
-        mvwprintw(content, 1, (41 - 20) / 2, "Registering New Car");
-
-        mvwprintw(content,  3,  4, "Brand");
-        mvwprintw(content,  6,  4, "Model");
-        mvwprintw(content,  9,  4, "Year");
-        mvwprintw(content,  9, 13, "Plate");
-        wattron(content, COLOR_PAIR(5));
-        mvwprintw(content,  4,  4, "                                ");
-        mvwprintw(content,  7,  4, "                                ");
-        mvwprintw(content, 10,  4, " 1234 ");
-        mvwprintw(content, 10, 13, " ABC-1234 ");
-        wattroff(content, COLOR_PAIR(5));
-        wrefresh(content);
-
-        curs_set(1);
-        wattron(content, COLOR_PAIR(6));
-        mvwscanw(content,   4,  5, " %30s", brand);
-        mvwscanw(content,   7,  5, " %30s", model);
-        mvwprintw(content, 10,  4, "      ");
-        wrefresh(content);
-        mvwscanw(content,  10,  5,  " %4d", &year);
-        mvwprintw(content, 10, 13, "          ");
-        wrefresh(content);
-        mvwscanw(content, 10, 14, " %8s", plate);
-        wattroff(content, COLOR_PAIR(6));
-        curs_set(0);
-        wrefresh(content);
-
-        // if all the fields get an overflow, the model will not print anything
+        template_print_car_info(content, "Registering New Car", 0, 0);
+        template_get_car_info(content, 0, 0, brand, model, &year, plate);
         
         is_new = screen_yes_no(k_question_new_car, k_question_new_car_size);
     }
@@ -422,50 +352,58 @@ screen_new_car( void )
 int
 screen_sell( void )
 {
-    char  brand[ 31 ] = "*";
-    char  model[ 31 ] = "*";
-    char  plate[ 8 ] = "*";
-    short year = -1;
-
     WINDOW *content = create_basic_layout(12, 40);
     if (content == NULL)
     {
         return EXIT_FAILURE;
     }
     
+    char  brand[ 31 ] = "*";
+    char  model[ 31 ] = "*";
+    char  plate[ 8 ] = "*";
+    short year = -1;
+
     keypad(content, true);
 
-    mvwprintw(content, 1, (41 - 4) / 2, "Sell");
-
-    mvwprintw(content,  3,  4, "Brand");
-    mvwprintw(content,  6,  4, "Model");
-    mvwprintw(content,  9,  4, "Year");
-    mvwprintw(content,  9, 13, "Plate");
-    wattron(content, COLOR_PAIR(5));
-    mvwprintw(content,  4,  4, "                                ");
-    mvwprintw(content,  7,  4, "                                ");
-    mvwprintw(content, 10,  4, " 1234 ");
-    mvwprintw(content, 10, 13, " ABC-1234 ");
-    wattroff(content, COLOR_PAIR(5));
-    wrefresh(content);
-
-    curs_set(1);
-    wattron(content, COLOR_PAIR(6));
-    mvwscanw(content,  4,  5, " %30s%*s", brand);
-    mvwscanw(content,  7,  5, " %30s%*s", model);
-    mvwprintw(content, 10,  4, "      ");
-    wrefresh(content);
-    mvwscanw(content, 10,  5, " %4d%*d", &year);
-    mvwprintw(content, 10, 13, "          ");
-    wrefresh(content);
-    mvwscanw(content, 10, 14, " %8s%*s", plate);
-    wattroff(content, COLOR_PAIR(6));
-    wrefresh(content);
-    curs_set(0);
+    template_print_car_info(content, "Sell", 0, 0);
+    template_get_car_info(content, 0, 0, brand, model, &year, plate);
 
     bool is_new = screen_yes_no(k_question_new_car, k_question_new_car_size);
 
-    // if all the fields get an overflow, the model will not print anything
+    // Fazer a query aqui
+
+    return EXIT_SUCCESS;
+}
+
+
+
+int
+screen_trade( void )
+{
+    WINDOW *content = create_basic_layout(12, 78);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    char  brand_client[ 31 ] = "*";
+    char  model_client[ 31 ] = "*";
+    char  plate_client[ 8 ] = "*";
+    short year_client = -1;
+
+    char  brand_dealer[ 31 ] = "*";
+    char  model_dealer[ 31 ] = "*";
+    char  plate_dealer[ 8 ] = "*";
+    short year_dealer = -1;
+
+    keypad(content, true);
+
+    template_print_car_info(content, "Client", 0, 0);
+    template_print_car_info(content, "Dealer", 1, 0);
+    template_get_car_info(content, 0, 0, brand_client, model_client, &year_client, plate_client);
+    template_get_car_info(content, 1, 0, brand_dealer, model_dealer, &year_dealer, plate_dealer);
+
+    bool is_new_dealer = screen_yes_no(k_question_new_car, k_question_new_car_size);
 
     // Fazer a query aqui
 
@@ -499,11 +437,11 @@ main( const int argc, const char **argv )
     {
         bool admin = false;
 
-        switch (screen_sign_in())
+        switch (screen_menu(k_menu_sign_in, k_menu_sign_in_size))
         {
             case 0:
                 logged_in = true;
-                admin = screen_yes_no( k_question_admin, k_question_admin_size );
+                admin = screen_yes_no(k_question_admin, k_question_admin_size);
                 break;
             case 1:
                 state = STOP;
@@ -517,11 +455,11 @@ main( const int argc, const char **argv )
 
             if (admin)
             {
-                switch (screen_menu_admin())
+                switch (screen_menu(k_menu_admin, k_menu_admin_size))
                 {
                     case 0: error = screen_new_car();    break;
                     case 1: error = screen_sell();       break;
-                    case 2: /* error = screen_trade(); */     break;
+                    case 2: error = screen_trade();      break;
                     case 3: /* error = screen_revision(); */  break;
                     case 4: /* error = screen_management(); */ break;
                     case 5: logged_in = false;           break;
@@ -529,19 +467,17 @@ main( const int argc, const char **argv )
                 }
 
                 if (error)
-                {
-                    
-                }
+                {}
             }
             else
             {
-                switch (screen_menu_user())
+                switch (screen_menu(k_menu_user, k_menu_user_size))
                 {
                     case 0: error = screen_new_car();  break;
                     case 1: error = screen_sell();     break;
-                    case 2: /* error = screen_trade(); */   break;
+                    case 2: error = screen_trade();    break;
                     case 3: /* error = screen_revision(); */ break;
-                    case 4: /* logged_in = false; */        break;
+                    case 4: logged_in = false;         break;
                     default: break;
                 }
 

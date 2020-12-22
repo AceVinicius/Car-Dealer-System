@@ -34,7 +34,7 @@ const char *k_menu_admin[ ] = {
     "[M]anagement",
     "Sign [O]ut"
 };
-const int k_menu_admin_size   = sizeof(k_menu_admin) / sizeof( char * );
+const int k_menu_admin_size   = sizeof(k_menu_admin) / sizeof(char *);
 const int k_menu_admin_height = k_menu_admin_size + PADDING * 2;
 const int k_menu_admin_width  = 21 + MARGIN * 2;
 
@@ -105,7 +105,7 @@ void close_api_ncurses( void );
 WINDOW *create_basic_layout( const int, const int );
 short screen_yes_no( const char *, const int );
 int screen_sign_in( void );
-int screen_menu_admin( void );
+int screen_menu_admin( const char **, const int );
 int screen_menu_user( void );
 int screen_new_car( void );
 int screen_sell( void );
