@@ -77,12 +77,12 @@ init_api_ncurses( void )
     curs_set(0);
     start_color();
     init_pair(1, COLOR_MAGENTA, COLOR_MAGENTA);
-    init_pair(2, COLOR_BLACK, COLOR_BLACK);
-    init_pair(3, COLOR_BLACK, COLOR_WHITE);
-    init_pair(4, COLOR_RED, COLOR_WHITE);
-    init_pair(5, 8, COLOR_BLACK);
-    init_pair(6, COLOR_WHITE, COLOR_BLACK);
-    init_pair(7, COLOR_RED, COLOR_BLACK);
+    init_pair(2, COLOR_BLACK  , COLOR_BLACK);
+    init_pair(3, COLOR_BLACK  , COLOR_WHITE);
+    init_pair(4, COLOR_RED    , COLOR_WHITE);
+    init_pair(5, 8            , COLOR_BLACK);
+    init_pair(6, COLOR_WHITE  , COLOR_BLACK);
+    init_pair(7, COLOR_RED    , COLOR_BLACK);
 
     return EXIT_SUCCESS;
 }
@@ -98,7 +98,7 @@ inline void close_api_ncurses( void ) { endwin(); }
 
 
 /******************************************************************************
- ****                                 MAIN                                 ****
+ ****                                 GUI                                  ****
  ******************************************************************************/
 
 
@@ -124,14 +124,14 @@ create_basic_layout( const int min_y, const int min_x )
         return NULL;
     }
 
-    WINDOW *border  = newwin(height + 2, width + 2, start_y    , start_x);
+    WINDOW *border  = newwin(height + 2, width + 2, start_y, start_x);
     if (shadow == NULL)
     {
         free(shadow);
         return NULL;
     }
 
-    WINDOW *content = newwin(height    , width    , start_y + 1, start_x + 1);
+    WINDOW *content = newwin(height, width, start_y + 1, start_x + 1);
     if (shadow == NULL)
     {
         free(shadow);
@@ -244,7 +244,8 @@ screen_yes_no( const char *question, const int question_size )
             {
                 wattron(content, COLOR_PAIR(4));
             }
-            mvwprintw(content, 3, 5 * i + (width - 10) / 2, k_yes_no[ i ]);
+            mvwprintw(content, 3, 6\
+             * i + (width - 10) / 2, k_yes_no[ i ]);
             wattroff(content, COLOR_PAIR(4));
         }
         wrefresh(content);
@@ -300,13 +301,9 @@ screen_menu( const char **menu, const int size )
 
         switch (wgetch(content))
         {
-            case KEY_UP:
-                if (highlight > 0) highlight--;
-                break;
-            case KEY_DOWN:
-                if (highlight < size - 1) highlight++;
-                break;
-            case '\n':          status = STOP; break;
+            case KEY_UP:   if (highlight > 0) highlight--;        break;
+            case KEY_DOWN: if (highlight < size - 1) highlight++; break;
+            case '\n':     status = STOP;                         break;
             default: break;
         }
     }
@@ -360,7 +357,7 @@ screen_sell( void )
     
     char  brand[ 31 ] = "*";
     char  model[ 31 ] = "*";
-    char  plate[ 8 ] = "*";
+    char  plate[ 8 ]  = "*";
     short year = -1;
 
     keypad(content, true);
@@ -388,12 +385,12 @@ screen_trade( void )
 
     char  brand_client[ 31 ] = "*";
     char  model_client[ 31 ] = "*";
-    char  plate_client[ 8 ] = "*";
+    char  plate_client[ 8 ]  = "*";
     short year_client = -1;
 
     char  brand_dealer[ 31 ] = "*";
     char  model_dealer[ 31 ] = "*";
-    char  plate_dealer[ 8 ] = "*";
+    char  plate_dealer[ 8 ]  = "*";
     short year_dealer = -1;
 
     keypad(content, true);
@@ -404,6 +401,24 @@ screen_trade( void )
     template_get_car_info(content, 1, 0, brand_dealer, model_dealer, &year_dealer, plate_dealer);
 
     bool is_new_dealer = screen_yes_no(k_question_new_car, k_question_new_car_size);
+
+    // Fazer a query aqui
+
+    return EXIT_SUCCESS;
+}
+
+
+
+int
+screen_revision ( void )
+{
+    WINDOW *content = create_basic_layout(12, 40);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    char  plate_client[ 8 ] = "*";
 
     // Fazer a query aqui
 
@@ -435,7 +450,7 @@ main( const int argc, const char **argv )
 
     while (state)
     {
-        bool admin = false;
+        short admin = false;
 
         switch (screen_menu(k_menu_sign_in, k_menu_sign_in_size))
         {
@@ -460,14 +475,11 @@ main( const int argc, const char **argv )
                     case 0: error = screen_new_car();    break;
                     case 1: error = screen_sell();       break;
                     case 2: error = screen_trade();      break;
-                    case 3: /* error = screen_revision(); */  break;
+                    case 3: error = screen_revision();   break;
                     case 4: /* error = screen_management(); */ break;
                     case 5: logged_in = false;           break;
                     default: break;
                 }
-
-                if (error)
-                {}
             }
             else
             {
@@ -476,14 +488,14 @@ main( const int argc, const char **argv )
                     case 0: error = screen_new_car();  break;
                     case 1: error = screen_sell();     break;
                     case 2: error = screen_trade();    break;
-                    case 3: /* error = screen_revision(); */ break;
+                    case 3: error = screen_revision(); break;
                     case 4: logged_in = false;         break;
                     default: break;
                 }
-
-                if (error)
-                {}
             }
+
+            if (error)
+            {}
         }
     }
 

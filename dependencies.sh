@@ -1,4 +1,4 @@
-sudo apt install mysql server -y
+sudo apt install mysql-server -y
 sudo service mysql start
 sudo mysql_secure_connection
 sudo apt install libncurses5-dev libncursesw5-dev

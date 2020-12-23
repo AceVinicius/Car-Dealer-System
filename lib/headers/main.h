@@ -11,20 +11,16 @@
 
 
 const char *k_yes_no[ ] = {
-    "No",
-    "Yes"
+    "[N]o",
+    "[Y]es"
 };
-const int k_yes_no_size   = sizeof(k_yes_no) / sizeof(char *);
-const int k_yes_no_height = k_yes_no_size + PADDING * 2;
-const int k_yes_no_width  = 4 + MARGIN * 2;
+const int k_yes_no_size = sizeof(k_yes_no) / sizeof(char *);
 
 const char *k_menu_sign_in[ ] = {
     "Sign [I]n",
     "[E]xit"
 };
-const int k_menu_sign_in_size   = sizeof(k_menu_sign_in) / sizeof(char *);
-const int k_menu_sign_in_height = k_menu_sign_in_size + PADDING * 2;
-const int k_menu_sign_in_width  = 20 + MARGIN * 2;
+const int k_menu_sign_in_size = sizeof(k_menu_sign_in) / sizeof(char *);
 
 const char *k_menu_admin[ ] = {
     "Register [N]ew Car",
@@ -34,18 +30,14 @@ const char *k_menu_admin[ ] = {
     "[M]anagement",
     "Sign [O]ut"
 };
-const int k_menu_admin_size   = sizeof(k_menu_admin) / sizeof(char *);
-const int k_menu_admin_height = k_menu_admin_size + PADDING * 2;
-const int k_menu_admin_width  = 21 + MARGIN * 2;
+const int k_menu_admin_size = sizeof(k_menu_admin) / sizeof(char *);
 
 const char *k_menu_admin_management[ ] = {
     "New [S]ector",
     "New [F]unctionary",
     "[B]ack"
 };
-const int k_menu_admin_management_size   = sizeof(k_menu_admin_management) / sizeof(char *);
-const int k_menu_admin_management_height = k_menu_admin_management_size + PADDING * 2;
-const int k_menu_admin_management_width  = 20 + MARGIN * 2;
+const int k_menu_admin_management_size = sizeof(k_menu_admin_management) / sizeof(char *);
 
 const char *k_menu_user[ ] = {
     "Register [N]ew Car",
@@ -54,9 +46,7 @@ const char *k_menu_user[ ] = {
     "Schedule [R]evision",
     "Sign [O]ut"
 };
-const int k_menu_user_size   = sizeof(k_menu_user) / sizeof(char *);
-const int k_menu_user_height = k_menu_user_size + PADDING * 2;
-const int k_menu_user_width  = 21 + MARGIN * 2;
+const int k_menu_user_size = sizeof(k_menu_user) / sizeof(char *);
 
 const char k_program[ ] = {
     " Car Dealer "
@@ -85,7 +75,7 @@ const char k_question_data[ ] = {
 const int k_question_data_size = sizeof(k_question_data) / sizeof(char);
 
 const char k_question_new_car[ ] = {
-    "Is the car new?"
+    "Is the car brand new?"
 };
 const int k_question_new_car_size = sizeof(k_question_new_car) / sizeof(char);
 
@@ -103,10 +93,10 @@ void error_api_ncurses( void );
 void close_api_ncurses( void );
 
 WINDOW *create_basic_layout( const int, const int );
+void template_print_car_info( WINDOW *, const char *, const int, const int );
+void template_get_car_info( WINDOW *, const int, const int, char *, char *, short *, char * );
 short screen_yes_no( const char *, const int );
-int screen_sign_in( void );
-int screen_menu_admin( const char **, const int );
-int screen_menu_user( void );
+int screen_menu( const char **, const int );
 int screen_new_car( void );
 int screen_sell( void );
 
