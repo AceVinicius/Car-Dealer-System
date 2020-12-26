@@ -335,8 +335,8 @@ template_print_employee_info(       WINDOW *content ,
     // Placeholders
     wattron(content, COLOR_PAIR(5));
     mvwprintw(content, height +  4, width +  4, " 123.456.789-01 ");
-    mvwprintw(content, height +  4, width + 22, " R$ 123456,78 ");
-    mvwprintw(content, height +  4, width + 40, " 012345 ");
+    mvwprintw(content, height +  4, width + 22, " R$ 123456,78   ");
+    mvwprintw(content, height +  4, width + 40, " 012345          ");
     mvwprintw(content, height +  7, width +  4, " Vinícius Ferreira Aguiar                            ");
     mvwprintw(content, height + 10, width +  4, " Rua Jorge Emilio Fontenelle, 110, apartamento 202   ");
     wattroff(content, COLOR_PAIR(5));
@@ -770,7 +770,7 @@ main( const int    argc ,
             {
                 logged_in = false;
                 state = STOP;
-                fprintf("%s Something went wrong with ncurses, please run the program again", k_fatal_error);
+                fprintf(stderr, "%s Something went wrong with ncurses, please run the program again", k_fatal_error);
             }
         }
     }
