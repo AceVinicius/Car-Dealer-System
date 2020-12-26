@@ -104,7 +104,8 @@ inline void close_api_ncurses( void ) { endwin(); }
 
 
 WINDOW *
-create_basic_layout( const int min_y, const int min_x )
+create_basic_layout( const int min_y ,
+                     const int min_x )
 {
     int term_y;
     int term_x;
@@ -146,8 +147,8 @@ create_basic_layout( const int min_y, const int min_x )
     wbkgd(border, COLOR_PAIR(3));
     box(border, 0, 0);
     wattron(border, COLOR_PAIR(4));
-    mvwprintw(border, 0         , (width + 2 - k_program_size) / 2, k_program);
-    mvwprintw(border, height + 1,  width     - k_creator_size     , k_creator);
+    mvwprintw(border, 0, (width + 2 - k_program_size) / 2, k_program);
+    mvwprintw(border, height + 1, width - k_creator_size, k_creator);
     wattroff(border, COLOR_PAIR(4));
     
     wbkgd(content, COLOR_PAIR(3));
@@ -164,25 +165,30 @@ create_basic_layout( const int min_y, const int min_x )
 
 
 void
-template_print_car_info( WINDOW *content, const char *title, const int start_x, const int start_y )
+template_print_car_info(       WINDOW *content ,
+                         const char   *title   ,
+                         const int     start_x ,
+                         const int     start_y )
 {
     const int size = strlen(title);
+    const int width  = k_car_width  * start_x;
+    const int height = k_car_height * start_y;
 
     // Title
-    mvwprintw(content, 11 * start_y +  1, 38 * start_x + (41 - size) / 2, title);
+    mvwprintw(content, height +  1, width + (k_car_width - size) / 2, title);
 
     // Field Names
-    mvwprintw(content, 11 * start_y +  3, 38 * start_x +  4, "Brand");
-    mvwprintw(content, 11 * start_y +  6, 38 * start_x +  4, "Model");
-    mvwprintw(content, 11 * start_y +  9, 38 * start_x +  4, "Year");
-    mvwprintw(content, 11 * start_y +  9, 38 * start_x + 13, "Plate");
+    mvwprintw(content, height +  3, width +  4, "Brand");
+    mvwprintw(content, height +  6, width +  4, "Model");
+    mvwprintw(content, height +  9, width +  4, "Year");
+    mvwprintw(content, height +  9, width + 13, "Plate");
 
     // Placeholders
     wattron(content, COLOR_PAIR(5));
-    mvwprintw(content, 11 * start_y +  4, 38 * start_x +  4, " Ford                           ");
-    mvwprintw(content, 11 * start_y +  7, 38 * start_x +  4, " Mustang GT                     ");
-    mvwprintw(content, 11 * start_y + 10, 38 * start_x +  4, " 2018 ");
-    mvwprintw(content, 11 * start_y + 10, 38 * start_x + 13, " ABC-1234 ");
+    mvwprintw(content, height +  4, width +  4, " Ford                           ");
+    mvwprintw(content, height +  7, width +  4, " Mustang GT                     ");
+    mvwprintw(content, height + 10, width +  4, " 2018 ");
+    mvwprintw(content, height + 10, width + 13, " ABC-1234 ");
     wattroff(content, COLOR_PAIR(5));
 
     wrefresh(content);
@@ -191,26 +197,192 @@ template_print_car_info( WINDOW *content, const char *title, const int start_x, 
 
 
 void
-template_get_car_info( WINDOW *content, const int start_x, const int start_y, char *brand, char *model, short *year, char *plate )
+template_get_car_info(       WINDOW *content ,
+                       const int     start_x ,
+                       const int     start_y ,
+                             char   *brand   ,
+                             char   *model   ,
+                             short  *year    ,
+                             char   *plate   )
 {
+    const int width  = k_car_width  * start_x;
+    const int height = k_car_height * start_y;
+
     curs_set(1);
+    wattron(content, COLOR_PAIR(6));
 
     // If all the fields get an overflow, the model will not print anything
-    wattron(content, COLOR_PAIR(6));
-    mvwprintw(content, 11 * start_y +  4, 38 * start_x +  4, "                                ");
+    mvwprintw(content, height +  4, width +  4, "                                ");
     wrefresh(content);
-    mvwscanw(content,  11 * start_y +  4, 38 * start_x +  5, " %30s%*s", brand);
-    mvwprintw(content, 11 * start_y +  7, 38 * start_x +  4, "                                ");
+    mvwscanw(content,  height +  4, width +  5, " %30s%*s", brand);
+    
+    mvwprintw(content, height +  7, width +  4, "                                ");
     wrefresh(content);
-    mvwscanw(content,  11 * start_y +  7, 38 * start_x +  5, " %30s%*s", model);
-    mvwprintw(content, 11 * start_y + 10, 38 * start_x +  4, "      ");
+    mvwscanw(content,  height +  7, width +  5, " %30s%*s", model);
+    
+    mvwprintw(content, height + 10, width +  4, "      ");
     wrefresh(content);
-    mvwscanw(content,  11 * start_y + 10, 38 * start_x +  5, " %4d%*d", &year);
-    mvwprintw(content, 11 * start_y + 10, 38 * start_x + 13, "          ");
+    mvwscanw(content,  height + 10, width +  5, " %4d%*d", &year);
+    
+    mvwprintw(content, height + 10, width + 13, "          ");
     wrefresh(content);
-    mvwscanw(content,  11 * start_y + 10, 38 * start_x + 14, " %8s%*s", plate);
-    wattroff(content, COLOR_PAIR(6));
+    mvwscanw(content,  height + 10, width + 14, " %8s%*s", plate);
 
+    wattroff(content, COLOR_PAIR(6));
+    curs_set(0);
+    wrefresh(content);
+}
+
+
+
+void
+template_print_client_info(       WINDOW *content ,
+                            const char   *title   ,
+                            const int     start_x ,
+                            const int     start_y )
+{
+    const int size   = strlen(title);
+    const int width  = k_client_width  * start_x;
+    const int height = k_client_height * start_y;
+
+    // Title
+    mvwprintw(content, height +  1, width + (k_client_width - size) / 2, title);
+
+    // Field Names
+    mvwprintw(content, height +  3, width +  4, "CPF");
+    mvwprintw(content, height +  3, width + 22, "Employee CPF");
+    mvwprintw(content, height +  3, width + 40, "Telephone");
+    mvwprintw(content, height +  6, width +  4, "Name");
+    mvwprintw(content, height +  9, width +  4, "Adress");
+
+    // Placeholders
+    wattron(content, COLOR_PAIR(5));
+    mvwprintw(content, height +  4, width +  4, " 123.456.789-01 ");
+    mvwprintw(content, height +  4, width + 22, " 123.456.789-01 ");
+    mvwprintw(content, height +  4, width + 40, " (12) 34567-8901 ");
+    mvwprintw(content, height +  7, width +  4, " Vinícius Ferreira Aguiar                            ");
+    mvwprintw(content, height + 10, width +  4, " Rua Jorge Emilio Fontenelle, 110, apartamento 202   ");
+    wattroff(content, COLOR_PAIR(5));
+
+    wrefresh(content);
+}
+
+
+
+void
+template_get_client_info(       WINDOW *content      ,
+                          const int     start_x      ,
+                          const int     start_y      ,
+                                char   *client_cpf   ,
+                                char   *employee_cpf ,
+                                char   *telephone    ,
+                                char   *name         ,
+                                char   *adress       )
+{
+    const int width  = k_client_width  * start_x;
+    const int height = k_client_height * start_y;
+
+    curs_set(1);
+    wattron(content, COLOR_PAIR(6));
+
+    mvwprintw(content, height +  4, width +  4, "                ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width +  5, " %14s%*s", client_cpf);
+
+    mvwprintw(content, height +  4, width + 22, "                ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width + 23, " %14s%*s", employee_cpf);
+
+    mvwprintw(content, height +  4, width + 40, "                 ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width + 41, " %15d%*d", telephone);
+
+    mvwprintw(content, height +  7, width +  4, "                                                     ");
+    wrefresh(content);
+    mvwscanw(content,  height +  7, width +  5, " %51s%*s", name);
+
+    mvwprintw(content, height + 10, width +  4, "                                                     ");
+    wrefresh(content);
+    mvwscanw(content,  height + 10, width +  5, " %51s%*s", adress);
+
+    wattroff(content, COLOR_PAIR(6));
+    curs_set(0);
+    wrefresh(content);
+}
+
+
+
+void
+template_print_employee_info(       WINDOW *content ,
+                              const char   *title   ,
+                              const int     start_x ,
+                              const int     start_y )
+{
+    const int size = strlen(title);
+    const int width  = k_employee_width  * start_x;
+    const int height = k_employee_height * start_y;
+
+    // Title
+    mvwprintw(content, height +  1, width + (k_employee_width - size) / 2, title);
+
+    // Field Names
+    mvwprintw(content, height +  3, width +  4, "CPF");
+    mvwprintw(content, height +  3, width + 22, "Salary");
+    mvwprintw(content, height +  3, width + 40, "Sector Code");
+    mvwprintw(content, height +  6, width +  4, "Name");
+    mvwprintw(content, height +  9, width +  4, "Adress");
+
+    // Placeholders
+    wattron(content, COLOR_PAIR(5));
+    mvwprintw(content, height +  4, width +  4, " 123.456.789-01 ");
+    mvwprintw(content, height +  4, width + 22, " R$ 123456,78 ");
+    mvwprintw(content, height +  4, width + 40, " 012345 ");
+    mvwprintw(content, height +  7, width +  4, " Vinícius Ferreira Aguiar                            ");
+    mvwprintw(content, height + 10, width +  4, " Rua Jorge Emilio Fontenelle, 110, apartamento 202   ");
+    wattroff(content, COLOR_PAIR(5));
+
+    wrefresh(content);
+}
+
+
+
+void
+template_get_employee_info(       WINDOW *content     ,
+                            const int     start_x     ,
+                            const int     start_y     ,
+                                  char   *cpf         ,
+                                  double *salary      ,
+                                  int    *sector_code ,
+                                  char   *name        ,
+                                  char   *adress      )
+{
+    const int width  = k_employee_width  * start_x;
+    const int height = k_employee_height * start_y;
+
+    curs_set(1);
+    wattron(content, COLOR_PAIR(6));
+
+    mvwprintw(content, height +  4, width +  4, "                ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width +  5, " %14s%*s", cpf);
+
+    mvwprintw(content, height +  4, width + 22, "                ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width + 23, " %14lf%*s", salary);
+
+    mvwprintw(content, height +  4, width + 40, "                 ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width + 41, " %15d%*d", sector_code);
+
+    mvwprintw(content, height +  7, width +  4, "                                                     ");
+    wrefresh(content);
+    mvwscanw(content,  height +  7, width +  5, " %51s%*s", name);
+
+    mvwprintw(content, height + 10, width +  4, "                                                     ");
+    wrefresh(content);
+    mvwscanw(content,  height + 10, width +  5, " %51s%*s", adress);
+
+    wattroff(content, COLOR_PAIR(6));
     curs_set(0);
     wrefresh(content);
 }
@@ -218,7 +390,8 @@ template_get_car_info( WINDOW *content, const int start_x, const int start_y, ch
 
 
 short
-screen_yes_no( const char *question, const int question_size )
+screen_yes_no( const char *question      ,
+               const int   question_size )
 {
     const int width  = question_size + MARGIN * 2;
     const int height = 5;
@@ -244,8 +417,7 @@ screen_yes_no( const char *question, const int question_size )
             {
                 wattron(content, COLOR_PAIR(4));
             }
-            mvwprintw(content, 3, 6\
-             * i + (width - 10) / 2, k_yes_no[ i ]);
+            mvwprintw(content, 3, 6 * i + (width - 11) / 2, k_yes_no[ i ]);
             wattroff(content, COLOR_PAIR(4));
         }
         wrefresh(content);
@@ -271,7 +443,8 @@ screen_yes_no( const char *question, const int question_size )
 
 
 int
-screen_menu( const char **menu, const int size )
+screen_menu( const char **menu ,
+             const int    size )
 {
     const int height = size + PADDING * 2;
     const int width  = 22 + MARGIN * 2;
@@ -314,6 +487,68 @@ screen_menu( const char **menu, const int size )
 
 
 int
+screen_new_client( void )
+{
+    char employee_cpf[ 15 ];
+    char client_cpf[ 15 ];
+    char telephone[ 16 ];
+    char adress[ 52 ];
+    char name[ 52 ];
+
+    do
+    {
+        WINDOW *content = create_basic_layout(k_client_height, k_client_width);
+        if (content == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+
+        keypad(content, true);
+
+        template_print_client_info(content, "Register New Client", 0, 0);
+        template_get_client_info(content, 0, 0, client_cpf, employee_cpf, telephone, name, adress);
+    }
+    while (!screen_yes_no(k_question_data, k_question_data_size));
+
+    // Fazer a query aqui
+
+    return EXIT_SUCCESS;
+}
+
+
+
+int
+screen_new_employee( void )
+{
+    char   cpf[ 15 ];
+    double salary;
+    int    sector_code;
+    char   adress[ 52 ];
+    char   name[ 52 ];
+
+    do
+    {
+        WINDOW *content = create_basic_layout(k_client_height, k_client_width);
+        if (content == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+
+        keypad(content, true);
+
+        template_print_employee_info(content, "Register New Client", 0, 0);
+        template_get_employee_info(content, 0, 0, cpf, &salary, &sector_code, name, adress);
+    }
+    while (!screen_yes_no(k_question_data, k_question_data_size));
+
+    // Fazer a query aqui
+
+    return EXIT_SUCCESS;
+}
+
+
+
+int
 screen_new_car( void )
 {
     char  brand[ 31 ];
@@ -324,7 +559,7 @@ screen_new_car( void )
 
     do
     {
-        WINDOW *content = create_basic_layout(12, 40);
+        WINDOW *content = create_basic_layout(k_car_height, k_car_width);
         if (content == NULL)
         {
             return EXIT_FAILURE;
@@ -349,7 +584,7 @@ screen_new_car( void )
 int
 screen_sell( void )
 {
-    WINDOW *content = create_basic_layout(12, 40);
+    WINDOW *content = create_basic_layout(k_car_height, k_car_width);
     if (content == NULL)
     {
         return EXIT_FAILURE;
@@ -377,7 +612,7 @@ screen_sell( void )
 int
 screen_trade( void )
 {
-    WINDOW *content = create_basic_layout(12, 78);
+    WINDOW *content = create_basic_layout(k_car_height, 2 * k_car_width);
     if (content == NULL)
     {
         return EXIT_FAILURE;
@@ -420,6 +655,10 @@ screen_revision ( void )
 
     char  plate_client[ 8 ] = "*";
 
+    
+
+
+
     // Fazer a query aqui
 
     return EXIT_SUCCESS;
@@ -434,10 +673,16 @@ screen_revision ( void )
 
 
 int
-main( const int argc, const char **argv )
+main( const int    argc ,
+      const char **argv )
 {
-    if (argc == 1)          return EXIT_FAILURE;
     if (init_api_ncurses()) return EXIT_FAILURE;
+    
+    if (argc == 1)
+    {
+        fprintf(stderr, "%s %s", k_fatal_error, k_database_name_error);
+        return EXIT_FAILURE;
+    }
 
     MYSQL *connection = init_api_mysql(argv[ 1 ]);
     if (connection == NULL)
@@ -472,12 +717,13 @@ main( const int argc, const char **argv )
             {
                 switch (screen_menu(k_menu_admin, k_menu_admin_size))
                 {
-                    case 0: error = screen_new_car();    break;
-                    case 1: error = screen_sell();       break;
-                    case 2: error = screen_trade();      break;
-                    case 3: error = screen_revision();   break;
-                    case 4: /* error = screen_management(); */ break;
-                    case 5: logged_in = false;           break;
+                    case 0: error = screen_new_client(); break;
+                    case 1: error = screen_new_car();    break;
+                    case 2: error = screen_sell();       break;
+                    case 3: error = screen_trade();      break;
+                    case 4: error = screen_revision();   break;
+                    case 5: /* error = screen_management(); */ break;
+                    case 6: logged_in = false;           break;
                     default: break;
                 }
             }
@@ -485,11 +731,12 @@ main( const int argc, const char **argv )
             {
                 switch (screen_menu(k_menu_user, k_menu_user_size))
                 {
-                    case 0: error = screen_new_car();  break;
-                    case 1: error = screen_sell();     break;
-                    case 2: error = screen_trade();    break;
-                    case 3: error = screen_revision(); break;
-                    case 4: logged_in = false;         break;
+                    case 0: error = screen_new_client(); break;
+                    case 1: error = screen_new_car();    break;
+                    case 2: error = screen_sell();       break;
+                    case 3: error = screen_trade();      break;
+                    case 4: error = screen_revision();   break;
+                    case 5: logged_in = false;           break;
                     default: break;
                 }
             }
