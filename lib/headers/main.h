@@ -45,13 +45,6 @@ const char *k_menu_admin[ ] = {
 };
 const int k_menu_admin_size = sizeof(k_menu_admin) / sizeof(char *);
 
-const char *k_menu_admin_management[ ] = {
-    "New [S]ector",
-    "New [F]unctionary",
-    "[B]ack"
-};
-const int k_menu_admin_management_size = sizeof(k_menu_admin_management) / sizeof(char *);
-
 const char *k_menu_user[ ] = {
     "Register New [C]lient",
     "Register [N]ew Car",
@@ -62,12 +55,19 @@ const char *k_menu_user[ ] = {
 };
 const int k_menu_user_size = sizeof(k_menu_user) / sizeof(char *);
 
+const char *k_menu_management[ ] = {
+    "New [E]mployee",
+    "New [S]ector",
+    "Bonus [I]nformations",
+    "[B]ack"
+};
+const int k_menu_management_size = sizeof(k_menu_management) / sizeof(char *);
+
 
 
 const char k_database_name_error[ ] = {
     "No database was given."
 };
-const int k_database_name_error_size = sizeof(k_database_name_error) / sizeof(char);
 
 const char k_fatal_error[ ] = {
     "\033[31;1mfatal error:\033[0;0m"
@@ -114,13 +114,20 @@ WINDOW *create_basic_layout( const int, const int );
 
 void template_print_car_info( WINDOW *, const char *, const int, const int );
 void template_get_car_info( WINDOW *, const int, const int, char *, char *, short *, char * );
-
-
+void template_print_client_info( WINDOW *, const char *, const int, const int );
+void template_get_client_info( WINDOW *, const int, const int, char *, char *, char *, char *, char * );
+void template_print_employee_info( WINDOW *, const char *, const int ,const int );
+void template_get_employee_info( WINDOW *, const int, const int, char *, double *, int *, char *, char * );
 
 short screen_yes_no( const char *, const int );
 int screen_menu( const char **, const int );
+int screen_new_client( void );
+int screen_new_employee( void );
 int screen_new_car( void );
 int screen_sell( void );
+int screen_trade( void );
+int screen_revision( void );
+int screen_management( void );
 
 
 

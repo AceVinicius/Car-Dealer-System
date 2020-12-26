@@ -645,7 +645,7 @@ screen_trade( void )
 
 
 int
-screen_revision ( void )
+screen_revision( void )
 {
     WINDOW *content = create_basic_layout(12, 40);
     if (content == NULL)
@@ -662,6 +662,31 @@ screen_revision ( void )
     // Fazer a query aqui
 
     return EXIT_SUCCESS;
+}
+
+
+
+int
+screen_management( void )
+{
+    bool state = RUNNING;
+    bool error = false;
+
+    while (state)
+    {
+        switch (screen_menu(k_menu_management, k_menu_management_size))
+        {
+            case 0: error = screen_new_employee(); break;
+            case 1: /* error = screen_new_sector(); */  break;
+            case 2: /* error = screen_bonus(); */      break;
+            case 3: state = STOP;                  break;
+            default: break;
+        }
+
+        if (error) break;
+    }
+
+    return error;
 }
 
 
@@ -711,7 +736,7 @@ main( const int    argc ,
 
         while(logged_in)
         {
-            int error = 0;
+            bool error = false;
 
             if (admin)
             {
@@ -722,7 +747,7 @@ main( const int    argc ,
                     case 2: error = screen_sell();       break;
                     case 3: error = screen_trade();      break;
                     case 4: error = screen_revision();   break;
-                    case 5: /* error = screen_management(); */ break;
+                    case 5: error = screen_management(); break;
                     case 6: logged_in = false;           break;
                     default: break;
                 }
@@ -742,7 +767,11 @@ main( const int    argc ,
             }
 
             if (error)
-            {}
+            {
+                logged_in = false;
+                state = STOP;
+                fprintf("%s Something went wrong with ncurses, please run the program again", k_fatal_error);
+            }
         }
     }
 
