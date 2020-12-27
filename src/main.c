@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2020
  *
  */
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -389,6 +390,62 @@ template_get_employee_info(       WINDOW *content     ,
 
 
 
+void
+template_print_sector_info(       WINDOW *content ,
+                            const char   *title   ,
+                            const int     start_x ,
+                            const int     start_y )
+{
+    const int size = strlen(title);
+    const int width  = k_sector_width  * start_x;
+    const int height = k_sector_height * start_y;
+
+    // Title
+    mvwprintw(content, height +  1, width + (k_sector_width - size) / 2, title);
+
+    // Field Names
+    mvwprintw(content, height +  3, width +  4, "Code");
+    mvwprintw(content, height +  3, width + 14, "Name");
+
+    // Placeholders
+    wattron(content, COLOR_PAIR(5));
+    mvwprintw(content, height +  4, width +  4, " 012345 ");
+    mvwprintw(content, height +  4, width + 14, " Vendas       ");
+    wattroff(content, COLOR_PAIR(5));
+
+    wrefresh(content);
+}
+
+
+
+void
+template_get_sector_info(       WINDOW *content     ,
+                            const int     start_x     ,
+                            const int     start_y     ,
+                                  int    *sector_code ,
+                                  char   *name        )
+{
+    const int width  = k_employee_width  * start_x;
+    const int height = k_employee_height * start_y;
+
+    curs_set(1);
+    wattron(content, COLOR_PAIR(6));
+
+    mvwprintw(content, height +  4, width +  4, "        ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width +  5, " %6d%*d", sector_code);
+
+    mvwprintw(content, height +  4, width + 14, "              ");
+    wrefresh(content);
+    mvwscanw(content,  height +  4, width + 15, " %12s%*s", name);
+
+    wattroff(content, COLOR_PAIR(6));
+    curs_set(0);
+    wrefresh(content);
+}
+
+
+
 short
 screen_yes_no( const char *question      ,
                const int   question_size )
@@ -676,8 +733,8 @@ screen_management( void )
     {
         switch (screen_menu(k_menu_management, k_menu_management_size))
         {
-            case 0: error = screen_new_employee(); break;
-            case 1: /* error = screen_new_sector(); */  break;
+            case 0: error = screen_new_sector();   break;
+            case 1: error = screen_new_employee(); break;
             case 2: /* error = screen_bonus(); */      break;
             case 3: state = STOP;                  break;
             default: break;
@@ -687,6 +744,34 @@ screen_management( void )
     }
 
     return error;
+}
+
+
+
+int
+screen_new_sector( void )
+{
+    char name[ 13 ];
+    int  sector_code;
+    
+    do
+    {
+        WINDOW *content = create_basic_layout(k_sector_height, k_sector_width);
+        if (content == NULL)
+        {
+            return EXIT_FAILURE;
+        }
+
+        keypad(content, true);
+
+        template_print_sector_info(content, "Register New Sector", 0, 0);
+        template_get_sector_info(content, 0, 0, &sector_code, name);
+    }
+    while (!screen_yes_no(k_question_data, k_question_data_size));
+
+    // Fazer a query aqui
+
+    return EXIT_SUCCESS; 
 }
 
 

@@ -56,8 +56,8 @@ const char *k_menu_user[ ] = {
 const int k_menu_user_size = sizeof(k_menu_user) / sizeof(char *);
 
 const char *k_menu_management[ ] = {
-    "New [E]mployee",
     "New [S]ector",
+    "New [E]mployee",
     "Bonus [I]nformations",
     "[B]ack"
 };
@@ -100,6 +100,9 @@ const int k_client_width  = 55 + 2 * MARGIN;
 
 const int k_employee_height = 10 + 2 * PADDING;
 const int k_employee_width  = 55 + 2 * MARGIN;
+
+const int k_sector_height = 4 + 2 * PADDING;
+const int k_sector_width  = 26 + 2 * MARGIN;
 
 
 
