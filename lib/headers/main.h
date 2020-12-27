@@ -121,8 +121,10 @@ void template_print_client_info( WINDOW *, const char *, const int, const int );
 void template_get_client_info( WINDOW *, const int, const int, char *, char *, char *, char *, char * );
 void template_print_employee_info( WINDOW *, const char *, const int ,const int );
 void template_get_employee_info( WINDOW *, const int, const int, char *, double *, int *, char *, char * );
+void template_print_sector_info( WINDOW *, const char *, const int, const int );
+void template_get_sector_info( WINDOW *, const int, const int, int *, char * );
 
-short screen_yes_no( const char *, const int );
+int screen_yes_no( const char *, const int );
 int screen_menu( const char **, const int );
 int screen_new_client( void );
 int screen_new_employee( void );
@@ -131,7 +133,7 @@ int screen_sell( void );
 int screen_trade( void );
 int screen_revision( void );
 int screen_management( void );
-
+int screen_new_sector( void );
 
 
 #endif // _MAIN_H_
