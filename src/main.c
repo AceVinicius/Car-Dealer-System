@@ -19,10 +19,6 @@
 
 
 
-
-
-
-
 /******************************************************************************
  ****                            APIs HANDLERS                             ****
  ******************************************************************************/
@@ -507,7 +503,7 @@ screen_yes_no( const char *question      ,
     while (status)
     {
         WINDOW *content = create_basic_layout(height, width);
-        if (content ==  NULL)
+        if (content == NULL)
         {
             return -1; 
         }
