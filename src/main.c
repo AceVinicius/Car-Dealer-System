@@ -8,6 +8,7 @@
  *
  */
 #include <time.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +17,22 @@
 #include <mysql/mysql.h>
 
 #include "../lib/headers/main.h"
+
+
+
+static bool
+compare_double( const double x ,
+                const double y )
+{
+    double epsilon = (double) 0.0000001f;
+
+    if(fabs(x - y) < epsilon)
+    {
+        return true;
+    }
+
+    return false;
+}
 
 
 
@@ -106,7 +123,7 @@ init_api_ncurses( void )
 
 
 inline void
-error_api_ncurses( void ) { fprintf(stderr, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error); }
+error_api_ncurses( void ) { printf("api: ncurses: %s your terminal does not support colors\n", k_fatal_error); }
 
 
 
@@ -187,7 +204,7 @@ template_print_car_info(       WINDOW *content ,
                          const int     start_x ,
                          const int     start_y )
 {
-    const int size   = strlen(title);
+    const int size = (int) strlen(title);
     const int width  = k_car_width  * start_x;
     const int height = k_car_height * start_y;
 
@@ -266,8 +283,8 @@ template_print_client_info(       WINDOW *content ,
                             const int     start_x ,
                             const int     start_y )
 {
-    const int size   = strlen(title);
-    const int width  = k_client_width  * start_x;
+    const int size = (int) strlen(title);
+    const int width = k_client_width  * start_x;
     const int height = k_client_height * start_y;
 
     // Title
@@ -351,7 +368,7 @@ template_print_employee_info(       WINDOW *content ,
                               const int     start_x ,
                               const int     start_y )
 {
-    const int size = strlen(title);
+    const int size = (int) strlen(title);
     const int width  = k_employee_width  * start_x;
     const int height = k_employee_height * start_y;
 
@@ -424,7 +441,7 @@ template_print_sector_info(       WINDOW *content ,
                             const int     start_x ,
                             const int     start_y )
 {
-    const int size = strlen(title);
+    const int size = (int) strlen(title);
     const int width  = k_sector_width  * start_x;
     const int height = k_sector_height * start_y;
 
@@ -535,7 +552,7 @@ screen_yes_no( const char *question      ,
 void
 screen_warning( const char *warning )
 {
-    const int width  = strlen(warning) + 2 * MARGIN;
+    const int width = (int) strlen(warning) + 2 * MARGIN;
     const int height = 5;
 
     bool status = RUNNING;
@@ -737,7 +754,7 @@ screen_new_employee( MYSQL *connection )
         screen_warning("Field 'Address' was not inserted properly.");
         error = true;
     }
-    if (employee->salary == -1.0)
+    if (compare_double(employee->salary, -1.0))
     {
         screen_warning("Field 'Salary' was not inserted properly.");
         error = true;
@@ -811,12 +828,12 @@ screen_new_car( MYSQL *connection )
         screen_warning("Field 'Model' was not inserted properly.");
         error = true;
     }
-    if (car->cost_value == -1.0)
+    if (compare_double(car->cost_value, -1.0))
     {
         screen_warning("Field 'Cost' was not inserted properly.");
         error = true;
     }
-    if (car->sell_value == -1.0)
+    if (compare_double(car->sell_value, -1.0))
     {
         screen_warning("Field 'Value' was not inserted properly.");
         error = true;
@@ -1062,7 +1079,7 @@ main( const int    argc ,
 {
     if (argc == 1)
     {
-        fprintf(stderr, "%s %s", k_fatal_error, k_database_name_error);
+        printf("%s %s", k_fatal_error, k_database_name_error);
         return EXIT_FAILURE;
     }
 
@@ -1079,7 +1096,7 @@ main( const int    argc ,
 
     while (state)
     {
-        short admin = false;
+        int admin = false;
 
         switch (screen_menu(k_menu_sign_in, k_menu_sign_in_size))
         {
