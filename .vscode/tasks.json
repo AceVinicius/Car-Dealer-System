@@ -6,14 +6,15 @@
             "command": "/usr/bin/clang",
             "args": [
                 "-g",
-                "-glldb",
+                "-ggdb",
                 "-O3",
                 "-Wall",
+                "-W",
                 "-Wpedantic",
                 "-lncurses",
                 "${workspaceFolder}/src/main.c",
                 "-o",
-                "${workspaceFolder}/bin/CDS",
+                "${workspaceFolder}/bin/cds",
                 "$(mysql_config --libs)"
             ],
             "options": {

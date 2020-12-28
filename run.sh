@@ -1,5 +1,2 @@
-#sudo service mysql start
-
-clang -g -glldb -Wall -Wpedantic -O3 -lncurses ./src/main.c -o ./bin/CDS $(mysql_config --libs)
-
-./bin/CDS CDS_database
+clang -g -ggdb -Wall -W -Wpedantic -O3 -lncurses ./src/main.c -o ./bin/cds $(mysql_config --libs)
+./bin/cds car_dealer_system

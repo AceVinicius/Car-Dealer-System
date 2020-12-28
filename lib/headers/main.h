@@ -10,6 +10,55 @@
 
 
 
+struct client
+{
+    int  employee_sector;
+    char client_cpf[ 15 ];
+    char name[ 33 ];
+    char address[ 65 ];
+    char telephone[ 16 ];
+    char plate[ 9 ];
+    char employee_cpf[ 15 ];
+};
+
+struct employee
+{
+    double salary;
+    int    sector_code;
+    char   cpf[ 15 ];
+    char   name[ 33 ];
+    char   address[ 65 ] ;
+};
+
+struct car
+{
+    double sell_value;
+    double cost_value;
+    int sector_code;
+    int year;
+    char brand[ 33 ];
+    char model[ 33 ];
+    char chassis[ 18 ];
+    bool is_new;
+    bool is_sell;
+    bool is_trade;
+};
+
+struct sector
+{
+    short agency_code;
+    char name[ 13 ];
+};
+
+
+
+typedef struct employee EMPLOYEE;
+typedef struct client CLIENT;
+typedef struct car CAR;
+typedef struct sector SECTOR;
+
+
+
 const char k_program[ ] = {
     " Car Dealer "
 };
@@ -90,21 +139,34 @@ const char k_question_new_car[ ] = {
 };
 const int k_question_new_car_size = sizeof(k_question_new_car) / sizeof(char);
 
+const char k_question_sell_car[ ] = {
+    "Is the car up to sell?"
+};
+const int k_question_sell_car_size = sizeof(k_question_sell_car) / sizeof(char);
+
+const char k_question_trade_car[ ] = {
+    "Is the car up to trade?"
+};
+const int k_question_trade_car_size = sizeof(k_question_trade_car) / sizeof(char);
 
 
-const int k_car_height = 10 + 2 * PADDING;
-const int k_car_width  = 34 + 2 * MARGIN; 
 
-const int k_client_height = 10 + 2 * PADDING;
-const int k_client_width  = 55 + 2 * MARGIN;
+const int k_car_height = 14 + 2 * PADDING;
+const int k_car_width  = 36 + 2 * MARGIN; 
+
+const int k_client_height = 11 + 2 * PADDING;
+const int k_client_width  = 68 + 2 * MARGIN;
 
 const int k_employee_height = 10 + 2 * PADDING;
 const int k_employee_width  = 55 + 2 * MARGIN;
 
-const int k_sector_height = 4 + 2 * PADDING;
-const int k_sector_width  = 26 + 2 * MARGIN;
+const int k_sector_height = 5 + 2 * PADDING;
+const int k_sector_width  = 28 + 2 * MARGIN;
 
 
+
+char *get_current_date( void );
+int make_query( MYSQL *, const char * );
 
 MYSQL *init_api_mysql( const char * );
 inline void error_api_mysql( MYSQL * );
@@ -116,24 +178,24 @@ void close_api_ncurses( void );
 WINDOW *create_basic_layout( const int, const int );
 
 void template_print_car_info( WINDOW *, const char *, const int, const int );
-void template_get_car_info( WINDOW *, const int, const int, char *, char *, short *, char * );
+void template_get_car_info( WINDOW *, CAR *, const int, const int );
 void template_print_client_info( WINDOW *, const char *, const int, const int );
-void template_get_client_info( WINDOW *, const int, const int, char *, char *, char *, char *, char * );
+void template_get_client_info( WINDOW *, CLIENT *, const int, const int );
 void template_print_employee_info( WINDOW *, const char *, const int ,const int );
-void template_get_employee_info( WINDOW *, const int, const int, char *, double *, int *, char *, char * );
+void template_get_employee_info( WINDOW *, EMPLOYEE *, const int, const int );
 void template_print_sector_info( WINDOW *, const char *, const int, const int );
-void template_get_sector_info( WINDOW *, const int, const int, int *, char * );
+void template_get_sector_info( WINDOW *, SECTOR *, const int, const int );
 
 int screen_yes_no( const char *, const int );
 int screen_menu( const char **, const int );
-int screen_new_client( void );
-int screen_new_employee( void );
-int screen_new_car( void );
-int screen_sell( void );
-int screen_trade( void );
-int screen_revision( void );
-int screen_management( void );
-int screen_new_sector( void );
+int screen_new_client( MYSQL * );
+int screen_new_employee( MYSQL * );
+int screen_new_car( MYSQL * );
+int screen_sell( MYSQL * );
+int screen_trade( MYSQL * );
+int screen_revision( MYSQL * );
+int screen_management( MYSQL * );
+int screen_new_sector( MYSQL * );
 
 
 #endif // _MAIN_H_

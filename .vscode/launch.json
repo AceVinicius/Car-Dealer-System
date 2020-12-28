@@ -5,27 +5,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "clang - Build and debug active file",
+            "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/bin/CDS",
+            "program": "${workspaceFolder}/bin/cds",
             "args": [
-                "CDS_database"
+                "car_dealer_system"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": false,
-            "MIMode": "lldb",
+            "MIMode": "gdb",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 }
-            ],
-            "preLaunchTask": "C/C++: clang build active file",
-            "miDebuggerPath": "/usr/bin/lldb-mi"
+            ]
         }
     ]
 }

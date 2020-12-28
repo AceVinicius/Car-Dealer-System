@@ -19,6 +19,10 @@
 
 
 
+
+
+
+
 /******************************************************************************
  ****                            APIs HANDLERS                             ****
  ******************************************************************************/
@@ -35,7 +39,7 @@ init_api_mysql( const char *database_name )
         return NULL;
     }
 
-    if (mysql_real_connect(new_connection, "localhost", "root", "Appetite#1987", NULL, 0, NULL, 0) == NULL)
+    if (mysql_real_connect(new_connection, "localhost", "root", "Appetite#1987", database_name, 0, NULL, 0) == NULL)
     {
         error_api_mysql(new_connection);
         close_api_mysql(new_connection);
@@ -47,7 +51,27 @@ init_api_mysql( const char *database_name )
 
 
 
-inline void error_api_mysql( MYSQL *connection ) { fprintf(stderr, "%s\n", mysql_error(connection)); }
+int
+make_query( MYSQL *connection, const char *query )
+{
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+
+inline void
+error_api_mysql( MYSQL *connection )
+{
+    FILE *file = fopen("error_output.txt", "a");
+    fprintf(file, "%s\n", mysql_error(connection));
+    fclose(file);
+}
 
 
 
@@ -90,7 +114,13 @@ init_api_ncurses( void )
 
 
 
-inline void error_api_ncurses( void ) { fprintf(stderr, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error); }
+inline void
+error_api_ncurses( void )
+{
+    FILE *file = fopen("error_output.txt", "a");
+    fprintf(file, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error);
+    fclose(file);
+}
 
 
 
@@ -171,7 +201,7 @@ template_print_car_info(       WINDOW *content ,
                          const int     start_x ,
                          const int     start_y )
 {
-    const int size = strlen(title);
+    const int size   = strlen(title);
     const int width  = k_car_width  * start_x;
     const int height = k_car_height * start_y;
 
@@ -179,17 +209,21 @@ template_print_car_info(       WINDOW *content ,
     mvwprintw(content, height +  1, width + (k_car_width - size) / 2, title);
 
     // Field Names
-    mvwprintw(content, height +  3, width +  4, "Brand");
-    mvwprintw(content, height +  6, width +  4, "Model");
-    mvwprintw(content, height +  9, width +  4, "Year");
-    mvwprintw(content, height +  9, width + 13, "Plate");
+    mvwprintw(content, height +   3, width +  4, "Brand");
+    mvwprintw(content, height +   6, width +  4, "Model");
+    mvwprintw(content, height +   9, width +  4, "Cost");
+    mvwprintw(content, height +   9, width + 22, "Value");
+    mvwprintw(content, height +  12, width +  4, "Year");
+    mvwprintw(content, height +  12, width + 13, "Chassis");
 
     // Placeholders
     wattron(content, COLOR_PAIR(5));
-    mvwprintw(content, height +  4, width +  4, " Ford                           ");
-    mvwprintw(content, height +  7, width +  4, " Mustang GT                     ");
-    mvwprintw(content, height + 10, width +  4, " 2018 ");
-    mvwprintw(content, height + 10, width + 13, " ABC-1234 ");
+    mvwprintw(content, height +  4, width +  4, " Ford                             ");
+    mvwprintw(content, height +  7, width +  4, " Mustang GT                       ");
+    mvwprintw(content, height + 10, width +  4, " R$ 1234567.89 ");
+    mvwprintw(content, height + 10, width + 22, " R$ 1234567.89 ");
+    mvwprintw(content, height + 13, width +  4, " 2018 ");
+    mvwprintw(content, height + 13, width + 13, " 0ABCD12E34F567890 ");
     wattroff(content, COLOR_PAIR(5));
 
     wrefresh(content);
@@ -199,12 +233,9 @@ template_print_car_info(       WINDOW *content ,
 
 void
 template_get_car_info(       WINDOW *content ,
+                             CAR    *car     ,
                        const int     start_x ,
-                       const int     start_y ,
-                             char   *brand   ,
-                             char   *model   ,
-                             short  *year    ,
-                             char   *plate   )
+                       const int     start_y )
 {
     const int width  = k_car_width  * start_x;
     const int height = k_car_height * start_y;
@@ -212,22 +243,29 @@ template_get_car_info(       WINDOW *content ,
     curs_set(1);
     wattron(content, COLOR_PAIR(6));
 
-    // If all the fields get an overflow, the model will not print anything
-    mvwprintw(content, height +  4, width +  4, "                                ");
+    mvwprintw(content, height +  4, width +  4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width +  5, " %30s%*s", brand);
+    mvwscanw(content,  height +  4, width +  5, " %32s", car->brand);
     
-    mvwprintw(content, height +  7, width +  4, "                                ");
+    mvwprintw(content, height +  7, width +  4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height +  7, width +  5, " %30s%*s", model);
+    mvwscanw(content,  height +  7, width +  5, " %32s", car->model);
     
-    mvwprintw(content, height + 10, width +  4, "      ");
+    mvwprintw(content, height + 10, width +  4, " R$            ");
     wrefresh(content);
-    mvwscanw(content,  height + 10, width +  5, " %4d%*d", &year);
+    mvwscanw(content,  height + 10, width +  8, " %10d", &car->cost_value);
+
+    mvwprintw(content, height + 10, width +  22, " R$            ");
+    wrefresh(content);
+    mvwscanw(content,  height + 10, width +  26, " %10d", &car->sell_value);
+
+    mvwprintw(content, height + 13, width +  4, "      ");
+    wrefresh(content);
+    mvwscanw(content,  height + 13, width +  5, " %4d", &car->year);
     
-    mvwprintw(content, height + 10, width + 13, "          ");
+    mvwprintw(content, height + 13, width + 13, "                   ");
     wrefresh(content);
-    mvwscanw(content,  height + 10, width + 14, " %8s%*s", plate);
+    mvwscanw(content,  height + 13, width + 14, " %17s", car->chassis);
 
     wattroff(content, COLOR_PAIR(6));
     curs_set(0);
@@ -251,18 +289,22 @@ template_print_client_info(       WINDOW *content ,
 
     // Field Names
     mvwprintw(content, height +  3, width +  4, "CPF");
-    mvwprintw(content, height +  3, width + 22, "Employee CPF");
-    mvwprintw(content, height +  3, width + 40, "Telephone");
+    mvwprintw(content, height +  3, width + 23, "Employee CPF");
+    mvwprintw(content, height +  3, width + 42, "Sector");
+    mvwprintw(content, height +  3, width + 50, "Telephone");
     mvwprintw(content, height +  6, width +  4, "Name");
-    mvwprintw(content, height +  9, width +  4, "Adress");
+    mvwprintw(content, height +  6, width + 40, "Plate");
+    mvwprintw(content, height +  9, width +  4, "Address");
 
     // Placeholders
     wattron(content, COLOR_PAIR(5));
     mvwprintw(content, height +  4, width +  4, " 123.456.789-01 ");
-    mvwprintw(content, height +  4, width + 22, " 123.456.789-01 ");
-    mvwprintw(content, height +  4, width + 40, " (12) 34567-8901 ");
-    mvwprintw(content, height +  7, width +  4, " Vinícius Ferreira Aguiar                            ");
-    mvwprintw(content, height + 10, width +  4, " Rua Jorge Emilio Fontenelle, 110, apartamento 202   ");
+    mvwprintw(content, height +  4, width + 23, " 123.456.789-01 ");
+    mvwprintw(content, height +  4, width + 42, " 012 ");
+    mvwprintw(content, height +  4, width + 50, " (12) 34567-8901 ");
+    mvwprintw(content, height +  7, width +  4, " Vinícius Ferreira Aguiar        ");
+    mvwprintw(content, height +  7, width + 41, " ABC-1234 ");
+    mvwprintw(content, height + 10, width +  4, " Rua Jorge Emilio Fontenelle, 110, apartamento 202                ");
     wattroff(content, COLOR_PAIR(5));
 
     wrefresh(content);
@@ -271,14 +313,10 @@ template_print_client_info(       WINDOW *content ,
 
 
 void
-template_get_client_info(       WINDOW *content      ,
-                          const int     start_x      ,
-                          const int     start_y      ,
-                                char   *client_cpf   ,
-                                char   *employee_cpf ,
-                                char   *telephone    ,
-                                char   *name         ,
-                                char   *adress       )
+template_get_client_info(       WINDOW *content ,
+                                CLIENT *client  ,
+                          const int     start_x ,
+                          const int     start_y )
 {
     const int width  = k_client_width  * start_x;
     const int height = k_client_height * start_y;
@@ -286,25 +324,33 @@ template_get_client_info(       WINDOW *content      ,
     curs_set(1);
     wattron(content, COLOR_PAIR(6));
 
-    mvwprintw(content, height +  4, width +  4, "                ");
+    mvwprintw(content, height + 4, width + 4, "                ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width +  5, " %14s%*s", client_cpf);
+    mvwscanw(content,  height + 4, width + 5, " %14s", client->client_cpf);
 
-    mvwprintw(content, height +  4, width + 22, "                ");
+    mvwprintw(content, height + 4, width + 23, "                ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width + 23, " %14s%*s", employee_cpf);
+    mvwscanw(content,  height + 4, width + 24, " %14s", client->employee_cpf);
 
-    mvwprintw(content, height +  4, width + 40, "                 ");
+    mvwprintw(content, height + 4, width + 42, "     ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width + 41, " %15d%*d", telephone);
+    mvwscanw(content,  height + 4, width + 43, " %3d", &client->employee_sector);
 
-    mvwprintw(content, height +  7, width +  4, "                                                     ");
+    mvwprintw(content, height + 4, width + 50, "                 ");
     wrefresh(content);
-    mvwscanw(content,  height +  7, width +  5, " %51s%*s", name);
+    mvwscanw(content,  height + 4, width + 51, " %15s", client->telephone);
 
-    mvwprintw(content, height + 10, width +  4, "                                                     ");
+    mvwprintw(content, height + 7, width + 4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height + 10, width +  5, " %51s%*s", adress);
+    mvwscanw(content,  height + 7, width + 5, " %32s", client->name);
+
+    mvwprintw(content, height + 7, width + 40, "          ");
+    wrefresh(content);
+    mvwscanw(content,  height + 7, width + 41, " %64s", client->plate);
+
+    mvwprintw(content, height + 10, width + 4, "                                                                  ");
+    wrefresh(content);
+    mvwscanw(content,  height + 10, width + 5, " %64s", client->address);
 
     wattroff(content, COLOR_PAIR(6));
     curs_set(0);
@@ -327,19 +373,19 @@ template_print_employee_info(       WINDOW *content ,
     mvwprintw(content, height +  1, width + (k_employee_width - size) / 2, title);
 
     // Field Names
-    mvwprintw(content, height +  3, width +  4, "CPF");
-    mvwprintw(content, height +  3, width + 22, "Salary");
-    mvwprintw(content, height +  3, width + 40, "Sector Code");
-    mvwprintw(content, height +  6, width +  4, "Name");
-    mvwprintw(content, height +  9, width +  4, "Adress");
+    mvwprintw(content, height + 3, width +  4, "CPF");
+    mvwprintw(content, height + 3, width + 23, "Salary");
+    mvwprintw(content, height + 3, width + 41, "Sector");
+    mvwprintw(content, height + 6, width +  4, "Name");
+    mvwprintw(content, height + 9, width +  4, "Address");
 
     // Placeholders
     wattron(content, COLOR_PAIR(5));
     mvwprintw(content, height +  4, width +  4, " 123.456.789-01 ");
-    mvwprintw(content, height +  4, width + 22, " R$ 123456,78   ");
-    mvwprintw(content, height +  4, width + 40, " 012345          ");
-    mvwprintw(content, height +  7, width +  4, " Vinícius Ferreira Aguiar                            ");
-    mvwprintw(content, height + 10, width +  4, " Rua Jorge Emilio Fontenelle, 110, apartamento 202   ");
+    mvwprintw(content, height +  4, width + 23, " R$ 1234567.89 ");
+    mvwprintw(content, height +  4, width + 41, " 012 ");
+    mvwprintw(content, height +  7, width +  4, " Vinícius Ferreira Aguiar        ");
+    mvwprintw(content, height + 10, width +  4, " Rua Jorge Emilio Fontenelle, 110, apartamento 202                ");
     wattroff(content, COLOR_PAIR(5));
 
     wrefresh(content);
@@ -348,14 +394,10 @@ template_print_employee_info(       WINDOW *content ,
 
 
 void
-template_get_employee_info(       WINDOW *content     ,
-                            const int     start_x     ,
-                            const int     start_y     ,
-                                  char   *cpf         ,
-                                  double *salary      ,
-                                  int    *sector_code ,
-                                  char   *name        ,
-                                  char   *adress      )
+template_get_employee_info(       WINDOW   *content  ,
+                                  EMPLOYEE *employee ,
+                            const int       start_x  ,
+                            const int       start_y  )
 {
     const int width  = k_employee_width  * start_x;
     const int height = k_employee_height * start_y;
@@ -363,25 +405,25 @@ template_get_employee_info(       WINDOW *content     ,
     curs_set(1);
     wattron(content, COLOR_PAIR(6));
 
-    mvwprintw(content, height +  4, width +  4, "                ");
+    mvwprintw(content, height + 4, width + 4, "                ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width +  5, " %14s%*s", cpf);
+    mvwscanw(content,  height + 4, width + 5, " %14s", employee->cpf);
 
-    mvwprintw(content, height +  4, width + 22, "                ");
+    mvwprintw(content, height + 4, width + 23, " R$            ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width + 23, " %14lf%*s", salary);
+    mvwscanw(content,  height + 4, width + 27, " %10lf", &employee->salary);
 
-    mvwprintw(content, height +  4, width + 40, "                 ");
+    mvwprintw(content, height + 4, width + 41, "     ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width + 41, " %15d%*d", sector_code);
+    mvwscanw(content,  height + 4, width + 42, " %3d", &employee->sector_code);
 
-    mvwprintw(content, height +  7, width +  4, "                                                     ");
+    mvwprintw(content, height + 7, width + 4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height +  7, width +  5, " %51s%*s", name);
+    mvwscanw(content,  height + 7, width + 5, " %32s", employee->name);
 
-    mvwprintw(content, height + 10, width +  4, "                                                     ");
+    mvwprintw(content, height + 10, width + 4, "                                                                  ");
     wrefresh(content);
-    mvwscanw(content,  height + 10, width +  5, " %51s%*s", adress);
+    mvwscanw(content,  height + 10, width + 5, " %64s", employee->address);
 
     wattroff(content, COLOR_PAIR(6));
     curs_set(0);
@@ -404,13 +446,13 @@ template_print_sector_info(       WINDOW *content ,
     mvwprintw(content, height +  1, width + (k_sector_width - size) / 2, title);
 
     // Field Names
-    mvwprintw(content, height +  3, width +  4, "Code");
-    mvwprintw(content, height +  3, width + 14, "Name");
+    mvwprintw(content, height + 3, width +  4, "Agency");
+    mvwprintw(content, height + 3, width + 12, "Name");
 
     // Placeholders
     wattron(content, COLOR_PAIR(5));
-    mvwprintw(content, height +  4, width +  4, " 012345 ");
-    mvwprintw(content, height +  4, width + 14, " Vendas       ");
+    mvwprintw(content, height + 4, width +  4, " 012 ");
+    mvwprintw(content, height + 4, width + 12, " Vendas           ");
     wattroff(content, COLOR_PAIR(5));
 
     wrefresh(content);
@@ -419,11 +461,10 @@ template_print_sector_info(       WINDOW *content ,
 
 
 void
-template_get_sector_info(       WINDOW *content     ,
-                            const int     start_x     ,
-                            const int     start_y     ,
-                                  int    *sector_code ,
-                                  char   *name        )
+template_get_sector_info(         WINDOW *content ,
+                                  SECTOR *sector  ,
+                            const int     start_x ,
+                            const int     start_y )
 {
     const int width  = k_employee_width  * start_x;
     const int height = k_employee_height * start_y;
@@ -431,13 +472,13 @@ template_get_sector_info(       WINDOW *content     ,
     curs_set(1);
     wattron(content, COLOR_PAIR(6));
 
-    mvwprintw(content, height +  4, width +  4, "        ");
+    mvwprintw(content, height + 4, width + 4, "     ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width +  5, " %6d%*d", sector_code);
+    mvwscanw(content,  height + 4, width + 5, " %3d", &sector->agency_code);
 
-    mvwprintw(content, height +  4, width + 14, "              ");
+    mvwprintw(content, height + 4, width + 12, "                  ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width + 15, " %12s%*s", name);
+    mvwscanw(content,  height + 4, width + 13, " %16s", sector->name);
 
     wattroff(content, COLOR_PAIR(6));
     curs_set(0);
@@ -533,6 +574,7 @@ screen_menu( const char **menu ,
             }
             mvwprintw(content, PADDING + i, MARGIN, menu[ i ]);
             wattroff(content, COLOR_PAIR(4));
+            wrefresh(content);
         }
 
         switch (wgetch(content))
@@ -550,13 +592,11 @@ screen_menu( const char **menu ,
 
 
 int
-screen_new_client( void )
+screen_new_client( MYSQL *connection )
 {
-    char employee_cpf[ 15 ];
-    char client_cpf[ 15 ];
-    char telephone[ 16 ];
-    char adress[ 52 ];
-    char name[ 52 ];
+    CLIENT *client = (CLIENT *) calloc(1, sizeof(CLIENT));
+
+    client->employee_sector = -1;
 
     do
     {
@@ -569,25 +609,44 @@ screen_new_client( void )
         keypad(content, true);
 
         template_print_client_info(content, "Register New Client", 0, 0);
-        template_get_client_info(content, 0, 0, client_cpf, employee_cpf, telephone, name, adress);
+        template_get_client_info(content, client, 0, 0);
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    // Fazer a query aqui
+    if (strcmp(client->client_cpf  , "")) return EXIT_SUCCESS;
+    if (strcmp(client->name        , "")) return EXIT_SUCCESS;
+    if (strcmp(client->address     , "")) return EXIT_SUCCESS;
+    if (strcmp(client->telephone   , "")) return EXIT_SUCCESS;
+    if (strcmp(client->plate       , "")) return EXIT_SUCCESS;
+    if (strcmp(client->employee_cpf, "")) return EXIT_SUCCESS;
+    if (client->employee_sector == -1)    return EXIT_SUCCESS;
 
-    return EXIT_SUCCESS;
+    char *query = (char *) calloc(512, sizeof(char));
+    
+    sprintf(
+        query,
+        "INSERT INTO cliente (cpf, nome, endereco, telefone, placa_carro, cpf_funcionario, cod_setor_origem) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d);",
+        client->client_cpf,
+        client->name,
+        client->address,
+        client->telephone,
+        client->plate,
+        client->employee_cpf,
+        client->employee_sector
+    );
+
+    return make_query(connection, query);
 }
 
 
 
 int
-screen_new_employee( void )
+screen_new_employee( MYSQL *connection )
 {
-    char   cpf[ 15 ];
-    double salary;
-    int    sector_code;
-    char   adress[ 52 ];
-    char   name[ 52 ];
+    EMPLOYEE *employee = (EMPLOYEE *) calloc(1, sizeof(EMPLOYEE));
+
+    employee->salary      = -1.0;
+    employee->sector_code = -1;
 
     do
     {
@@ -599,26 +658,43 @@ screen_new_employee( void )
 
         keypad(content, true);
 
-        template_print_employee_info(content, "Register New Client", 0, 0);
-        template_get_employee_info(content, 0, 0, cpf, &salary, &sector_code, name, adress);
+        template_print_employee_info(content, "Register New Employee", 0, 0);
+        template_get_employee_info(content, employee, 0, 0);
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    // Fazer a query aqui
+    if (strcmp(employee->cpf    , "")) return EXIT_SUCCESS;
+    if (strcmp(employee->name   , "")) return EXIT_SUCCESS;
+    if (strcmp(employee->address, "")) return EXIT_SUCCESS;
+    if (employee->salary      == -1.0) return EXIT_SUCCESS;
+    if (employee->sector_code == -1)   return EXIT_SUCCESS;
 
-    return EXIT_SUCCESS;
+    char *query = (char *) calloc(512, sizeof(char));
+    
+    sprintf(
+        query,
+        "INSERT INTO funcionario (cpf, nome, endereco, salario, cod_setor, data_Admissao) VALUES ('%s', '%s', '%s', %2lf, %d, NOW());",
+        employee->cpf,
+        employee->name,
+        employee->address,
+        employee->salary,
+        employee->sector_code
+    );
+
+    return make_query(connection, query);
 }
 
 
 
 int
-screen_new_car( void )
+screen_new_car( MYSQL *connection )
 {
-    char  brand[ 31 ];
-    char  model[ 31 ];
-    char  plate[ 9 ];
-    bool  is_new;
-    short year;
+    CAR *car = (CAR *) calloc(1, sizeof(CAR));
+
+    car->sell_value  = -1.0;
+    car->cost_value  = -1.0;
+    car->sector_code = -1;
+    car->year        = -1;
 
     do
     {
@@ -631,134 +707,50 @@ screen_new_car( void )
         keypad(content, true);
 
         template_print_car_info(content, "Registering New Car", 0, 0);
-        template_get_car_info(content, 0, 0, brand, model, &year, plate);
+        template_get_car_info(content, car, 0, 0);
         
-        is_new = screen_yes_no(k_question_new_car, k_question_new_car_size);
+        car->is_new   = screen_yes_no(k_question_new_car  , k_question_new_car_size);
+        car->is_sell  = screen_yes_no(k_question_sell_car , k_question_sell_car_size);
+        car->is_trade = screen_yes_no(k_question_trade_car, k_question_trade_car_size);
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    // Fazer a query aqui
+    if (strcmp(car->model  , "")) return EXIT_SUCCESS;
+    if (strcmp(car->chassis, "")) return EXIT_SUCCESS;
+    if (strcmp(car->brand  , "")) return EXIT_SUCCESS;
+    if (car->cost_value  == -1.0) return EXIT_SUCCESS;
+    if (car->sell_value  == -1.0) return EXIT_SUCCESS;
+    if (car->sector_code == -1)   return EXIT_SUCCESS;
+    if (car->year        == -1)   return EXIT_SUCCESS;
 
-    return EXIT_SUCCESS;
+    char *query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, valor_venda, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %2lf, %2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
+        car->model,
+        car->chassis,
+        car->brand,
+        car->year,
+        car->cost_value,
+        car->sell_value,
+        car->is_sell,
+        car->is_new,
+        car->is_trade,
+        car->sector_code
+    );
+
+    return make_query(connection, query);
 }
 
 
 
 int
-screen_sell( void )
+screen_new_sector( MYSQL *connection )
 {
-    WINDOW *content = create_basic_layout(k_car_height, k_car_width);
-    if (content == NULL)
-    {
-        return EXIT_FAILURE;
-    }
+    SECTOR *sector = (SECTOR *) calloc(1, sizeof(SECTOR));
     
-    char  brand[ 31 ] = "*";
-    char  model[ 31 ] = "*";
-    char  plate[ 8 ]  = "*";
-    short year = -1;
-
-    keypad(content, true);
-
-    template_print_car_info(content, "Sell", 0, 0);
-    template_get_car_info(content, 0, 0, brand, model, &year, plate);
-
-    bool is_new = screen_yes_no(k_question_new_car, k_question_new_car_size);
-
-    // Fazer a query aqui
-
-    return EXIT_SUCCESS;
-}
-
-
-
-int
-screen_trade( void )
-{
-    WINDOW *content = create_basic_layout(k_car_height, 2 * k_car_width);
-    if (content == NULL)
-    {
-        return EXIT_FAILURE;
-    }
-
-    char  brand_client[ 31 ] = "*";
-    char  model_client[ 31 ] = "*";
-    char  plate_client[ 8 ]  = "*";
-    short year_client = -1;
-
-    char  brand_dealer[ 31 ] = "*";
-    char  model_dealer[ 31 ] = "*";
-    char  plate_dealer[ 8 ]  = "*";
-    short year_dealer = -1;
-
-    keypad(content, true);
-
-    template_print_car_info(content, "Client", 0, 0);
-    template_print_car_info(content, "Dealer", 1, 0);
-    template_get_car_info(content, 0, 0, brand_client, model_client, &year_client, plate_client);
-    template_get_car_info(content, 1, 0, brand_dealer, model_dealer, &year_dealer, plate_dealer);
-
-    bool is_new_dealer = screen_yes_no(k_question_new_car, k_question_new_car_size);
-
-    // Fazer a query aqui
-
-    return EXIT_SUCCESS;
-}
-
-
-
-int
-screen_revision( void )
-{
-    WINDOW *content = create_basic_layout(12, 40);
-    if (content == NULL)
-    {
-        return EXIT_FAILURE;
-    }
-
-    char  plate_client[ 8 ] = "*";
-
-    
-
-
-
-    // Fazer a query aqui
-
-    return EXIT_SUCCESS;
-}
-
-
-
-int
-screen_management( void )
-{
-    bool state = RUNNING;
-    bool error = false;
-
-    while (state)
-    {
-        switch (screen_menu(k_menu_management, k_menu_management_size))
-        {
-            case 0: error = screen_new_sector();   break;
-            case 1: error = screen_new_employee(); break;
-            case 2: /* error = screen_bonus(); */      break;
-            case 3: state = STOP;                  break;
-            default: break;
-        }
-
-        if (error) break;
-    }
-
-    return error;
-}
-
-
-
-int
-screen_new_sector( void )
-{
-    char name[ 13 ];
-    int  sector_code;
+    sector->agency_code = -1;
     
     do
     {
@@ -771,13 +763,151 @@ screen_new_sector( void )
         keypad(content, true);
 
         template_print_sector_info(content, "Register New Sector", 0, 0);
-        template_get_sector_info(content, 0, 0, &sector_code, name);
+        template_get_sector_info(content, sector, 0, 0);
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    // Fazer a query aqui
+    if (strcmp(sector->name, ""))  return EXIT_SUCCESS;
+    if (sector->agency_code == -1) return EXIT_SUCCESS;
 
-    return EXIT_SUCCESS; 
+    char *query = (char *) calloc(512, sizeof(char));
+    
+    sprintf(
+        query,
+        "INSERT INTO setor (cod_agencia, nome) VALUES (%d, '%s');",
+        sector->agency_code,
+        sector->name
+    );
+
+    return make_query(connection, query);
+}
+
+
+
+// int
+// screen_sell( MYSQL *connection )
+// {
+//     WINDOW *content = create_basic_layout(k_car_height, k_car_width);
+//     if (content == NULL)
+//     {
+//         return EXIT_FAILURE;
+//     }
+    
+//     CAR *car = (CAR *) calloc(1, sizeof(CAR));
+
+//     keypad(content, true);
+
+//     template_print_car_info(content, "Sell", 0, 0);
+//     template_get_car_info(content, car, 0, 0);
+
+//     car->is_new   = screen_yes_no(k_question_new_car  , k_question_new_car_size);
+//     car->is_sell  = screen_yes_no(k_question_sell_car , k_question_sell_car_size);
+//     car->is_trade = screen_yes_no(k_question_trade_car, k_question_trade_car_size);
+
+//     char *query = (char *) calloc(512, sizeof(char));
+    
+//     sprintf(
+//         query,
+//         "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, valor_venda, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %2lf, %2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
+//         car->model,
+//         car->chassis,
+//         car->brand,
+//         car->year,
+//         car->cost_value,
+//         car->sell_value,
+//         car->is_sell,
+//         car->is_new,
+//         car->is_trade,
+//         car->sector_code
+//     );
+
+//     return make_query(connection, query);
+
+//     return EXIT_SUCCESS;
+// }
+
+
+
+// int
+// screen_trade( MYSQL *connection )
+// {
+//     WINDOW *content = create_basic_layout(k_car_height, 2 * k_car_width);
+//     if (content == NULL)
+//     {
+//         return EXIT_FAILURE;
+//     }
+
+//     char  brand_client[ 31 ] = "*";
+//     char  model_client[ 31 ] = "*";
+//     char  plate_client[ 8 ]  = "*";
+//     short year_client = -1;
+
+//     char  brand_dealer[ 31 ] = "*";
+//     char  model_dealer[ 31 ] = "*";
+//     char  plate_dealer[ 8 ]  = "*";
+//     short year_dealer = -1;
+
+//     keypad(content, true);
+
+//     template_print_car_info(content, "Client", 0, 0);
+//     template_print_car_info(content, "Dealer", 1, 0);
+//     template_get_car_info(content, 0, 0, brand_client, model_client, &year_client, plate_client);
+//     template_get_car_info(content, 1, 0, brand_dealer, model_dealer, &year_dealer, plate_dealer);
+
+//     bool is_new_dealer = screen_yes_no(k_question_new_car, k_question_new_car_size);
+
+//     char *query = (char *) calloc(512, sizeof(char));
+    
+//     sprintf(query, "INSERT INTO funcionario(cpf, nome, endereco, salario, cod_setor, data_Admissao)\
+//                     VALUES (%s, %s, %s, %2lf, %d, %s);", cpf, name, address, salary, sector_code, get_current_date());
+    
+//     return make_query(connection, query);
+// }
+
+
+
+// int
+// screen_revision( MYSQL *connection )
+// {
+//     WINDOW *content = create_basic_layout(12, 40);
+//     if (content == NULL)
+//     {
+//         return EXIT_FAILURE;
+//     }
+
+//     char  plate_client[ 8 ] = "*";
+
+//     char *query = (char *) calloc(512, sizeof(char));
+    
+//     sprintf(query, "INSERT INTO funcionario(cpf, nome, endereco, salario, cod_setor, data_Admissao)\
+//                     VALUES (%s, %s, %s, %2lf, %d, %s);", cpf, name, address, salary, sector_code, get_current_date());
+
+//     return make_query(connection, query);
+// }
+
+
+
+int
+screen_management( MYSQL *connection )
+{
+    bool state = RUNNING;
+    bool error = false;
+
+    while (state)
+    {
+        switch (screen_menu(k_menu_management, k_menu_management_size))
+        {
+            case 0: error = screen_new_sector(connection);   break;
+            case 1: error = screen_new_employee(connection); break;
+            case 2: /* error = screen_bonus(connection); */      break;
+            case 3: state = STOP;                            break;
+            default: break;
+        }
+
+        if (error) break;
+    }
+
+    return error;
 }
 
 
@@ -792,11 +922,16 @@ int
 main( const int    argc ,
       const char **argv )
 {
+    FILE *file = fopen("error_output.txt", "w");
+    fclose(file);
+
     if (init_api_ncurses()) return EXIT_FAILURE;
     
     if (argc == 1)
     {
-        fprintf(stderr, "%s %s", k_fatal_error, k_database_name_error);
+        file = fopen("error_output.txt", "a");
+        fprintf(file, "%s %s", k_fatal_error, k_database_name_error);
+        fclose(file);
         return EXIT_FAILURE;
     }
 
@@ -833,13 +968,13 @@ main( const int    argc ,
             {
                 switch (screen_menu(k_menu_admin, k_menu_admin_size))
                 {
-                    case 0: error = screen_new_client(); break;
-                    case 1: error = screen_new_car();    break;
-                    case 2: error = screen_sell();       break;
-                    case 3: error = screen_trade();      break;
-                    case 4: error = screen_revision();   break;
-                    case 5: error = screen_management(); break;
-                    case 6: logged_in = false;           break;
+                    case 0: error = screen_new_client(connection); break;
+                    case 1: error = screen_new_car(connection);    break;
+                    case 2: /*error = screen_sell(connection);*/       break;
+                    case 3: /*error = screen_trade(connection);*/      break;
+                    case 4: /*error = screen_revision(connection);*/   break;
+                    case 5: error = screen_management(connection); break;
+                    case 6: logged_in = false;                     break;
                     default: break;
                 }
             }
@@ -847,12 +982,12 @@ main( const int    argc ,
             {
                 switch (screen_menu(k_menu_user, k_menu_user_size))
                 {
-                    case 0: error = screen_new_client(); break;
-                    case 1: error = screen_new_car();    break;
-                    case 2: error = screen_sell();       break;
-                    case 3: error = screen_trade();      break;
-                    case 4: error = screen_revision();   break;
-                    case 5: logged_in = false;           break;
+                    case 0: error = screen_new_client(connection); break;
+                    case 1: error = screen_new_car(connection);    break;
+                    case 2: /*error = screen_sell(connection);*/       break;
+                    case 3: /*error = screen_trade(connection);*/      break;
+                    case 4: /*error = screen_revision(connection);*/   break;
+                    case 5: logged_in = false;                     break;
                     default: break;
                 }
             }
@@ -861,13 +996,13 @@ main( const int    argc ,
             {
                 logged_in = false;
                 state = STOP;
-                fprintf(stderr, "%s Something went wrong with ncurses, please run the program again", k_fatal_error);
             }
         }
     }
 
     close_api_mysql(connection);
     close_api_ncurses();
+    fclose(file);
 
     return EXIT_SUCCESS;
 }
