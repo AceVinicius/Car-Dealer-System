@@ -187,6 +187,7 @@ void template_print_sector_info( WINDOW *, const char *, const int, const int );
 void template_get_sector_info( WINDOW *, SECTOR *, const int, const int );
 
 int screen_yes_no( const char *, const int );
+void screen_warning( const char * );
 int screen_menu( const char **, const int );
 int screen_new_client( MYSQL * );
 int screen_new_employee( MYSQL * );

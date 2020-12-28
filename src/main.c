@@ -62,12 +62,7 @@ make_query( MYSQL *connection, const char *query )
 
 
 inline void
-error_api_mysql( MYSQL *connection )
-{
-    FILE *file = fopen("error_output.txt", "a");
-    fprintf(file, "%s\n", mysql_error(connection));
-    fclose(file);
-}
+error_api_mysql( MYSQL *connection ) { screen_warning(mysql_error(connection)); }
 
 
 
@@ -111,12 +106,7 @@ init_api_ncurses( void )
 
 
 inline void
-error_api_ncurses( void )
-{
-    FILE *file = fopen("error_output.txt", "a");
-    fprintf(file, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error);
-    fclose(file);
-}
+error_api_ncurses( void ) { fprintf(stderr, "api: ncurses: %s your terminal does not support colors\n", k_fatal_error); }
 
 
 
@@ -241,11 +231,11 @@ template_get_car_info(       WINDOW *content ,
 
     mvwprintw(content, height +  4, width +  4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height +  4, width +  5, " %32s", car->brand);
+    mvwscanw(content,  height +  4, width +  5, " %32[^\n]s%*c", car->brand);
     
     mvwprintw(content, height +  7, width +  4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height +  7, width +  5, " %32s", car->model);
+    mvwscanw(content,  height +  7, width +  5, " %32[^\n]s%*c", car->model);
     
     mvwprintw(content, height + 10, width +  4, " R$            ");
     wrefresh(content);
@@ -334,19 +324,19 @@ template_get_client_info(       WINDOW *content ,
 
     mvwprintw(content, height + 4, width + 50, "                 ");
     wrefresh(content);
-    mvwscanw(content,  height + 4, width + 51, " %15s", client->telephone);
+    mvwscanw(content,  height + 4, width + 51, " %15[^\n]s%*c", client->telephone);
 
     mvwprintw(content, height + 7, width + 4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height + 7, width + 5, " %32s", client->name);
+    mvwscanw(content,  height + 7, width + 5, " %32[^\n]s%*c", client->name);
 
     mvwprintw(content, height + 7, width + 40, "          ");
     wrefresh(content);
-    mvwscanw(content,  height + 7, width + 41, " %64s", client->plate);
+    mvwscanw(content,  height + 7, width + 41, " %8s", client->plate);
 
     mvwprintw(content, height + 10, width + 4, "                                                                  ");
     wrefresh(content);
-    mvwscanw(content,  height + 10, width + 5, " %64s", client->address);
+    mvwscanw(content,  height + 10, width + 5, " %64[^\n]s%*c", client->address);
 
     wattroff(content, COLOR_PAIR(6));
     curs_set(0);
@@ -415,11 +405,11 @@ template_get_employee_info(       WINDOW   *content  ,
 
     mvwprintw(content, height + 7, width + 4, "                                  ");
     wrefresh(content);
-    mvwscanw(content,  height + 7, width + 5, " %32s", employee->name);
+    mvwscanw(content,  height + 7, width + 5, " %32[^\n]s%*c", employee->name);
 
     mvwprintw(content, height + 10, width + 4, "                                                                  ");
     wrefresh(content);
-    mvwscanw(content,  height + 10, width + 5, " %64s", employee->address);
+    mvwscanw(content,  height + 10, width + 5, " %64[^\n]s%*c", employee->address);
 
     wattroff(content, COLOR_PAIR(6));
     curs_set(0);
@@ -519,8 +509,8 @@ screen_yes_no( const char *question      ,
             }
             mvwprintw(content, 3, 6 * i + (width - 11) / 2, k_yes_no[ i ]);
             wattroff(content, COLOR_PAIR(4));
+            wrefresh(content);
         }
-        wrefresh(content);
 
         switch (wgetch(content))
         {
@@ -538,6 +528,42 @@ screen_yes_no( const char *question      ,
     }
 
     return highlight;
+}
+
+
+
+void
+screen_warning( const char *warning )
+{
+    const int width  = strlen(warning) + 2 * MARGIN;
+    const int height = 5;
+
+    bool status = RUNNING;
+
+    while (status)
+    {
+        WINDOW *content = create_basic_layout(height, width);
+        if (content == NULL)
+        {
+            return; 
+        }
+
+        keypad(content, true);
+        mvwprintw(content, 1, MARGIN, warning);
+
+        wattron(content, COLOR_PAIR(4));
+        mvwprintw(content, 3, (width - 2) / 2, "OK");
+        wattroff(content, COLOR_PAIR(4));
+        wrefresh(content);
+
+        switch (wgetch(content))
+        {
+            case '\n': status = STOP; break;
+            default: break;
+        }
+    }
+
+    return;
 }
 
 
@@ -609,29 +635,64 @@ screen_new_client( MYSQL *connection )
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    if (strcmp(client->client_cpf  , "")) return EXIT_SUCCESS;
-    if (strcmp(client->name        , "")) return EXIT_SUCCESS;
-    if (strcmp(client->address     , "")) return EXIT_SUCCESS;
-    if (strcmp(client->telephone   , "")) return EXIT_SUCCESS;
-    if (strcmp(client->plate       , "")) return EXIT_SUCCESS;
-    if (strcmp(client->employee_cpf, "")) return EXIT_SUCCESS;
-    if (client->employee_sector == -1)    return EXIT_SUCCESS;
+    bool error = false;
 
-    char *query = (char *) calloc(512, sizeof(char));
-    
-    sprintf(
-        query,
-        "INSERT INTO cliente (cpf, nome, endereco, telefone, placa_carro, cpf_funcionario, cod_setor_origem) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d);",
-        client->client_cpf,
-        client->name,
-        client->address,
-        client->telephone,
-        client->plate,
-        client->employee_cpf,
-        client->employee_sector
-    );
+    if (client->client_cpf[ 0 ] == '\000')
+    {
+        screen_warning("Field 'CPF' was not inserted properly.");
+        error = true;
+    }
+    if (client->employee_cpf[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Employee CPF' was not inserted properly.");
+        error = true;
+    }
+    if (client->employee_sector == -1)
+    {
+        screen_warning("Field 'Sector' was not inserted properly.");
+        error = true;
+    }
+    if (client->telephone[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Telephone' was not inserted properly.");
+        error = true;
+    }
+    if (client->name[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Name' was not inserted properly.");
+        error = true;
+    }
+    if (client->plate[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Plate' was not inserted properly.");
+        error = true;
+    }
+    if (client->address[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Address' was not inserted properly.");
+        error = true;
+    }
 
-    return make_query(connection, query);
+    if (!error)
+    {
+        char *query = (char *) calloc(512, sizeof(char));
+        
+        sprintf(
+            query,
+            "INSERT INTO cliente (cpf, nome, endereco, telefone, placa_carro, cpf_funcionario, cod_setor_origem) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %d);",
+            client->client_cpf,
+            client->name,
+            client->address,
+            client->telephone,
+            client->plate,
+            client->employee_cpf,
+            client->employee_sector
+        );
+
+        make_query(connection, query);
+    }
+
+    return EXIT_SUCCESS;
 }
 
 
@@ -659,25 +720,52 @@ screen_new_employee( MYSQL *connection )
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    if (strcmp(employee->cpf    , "")) return EXIT_SUCCESS;
-    if (strcmp(employee->name   , "")) return EXIT_SUCCESS;
-    if (strcmp(employee->address, "")) return EXIT_SUCCESS;
-    if (employee->salary      == -1.0) return EXIT_SUCCESS;
-    if (employee->sector_code == -1)   return EXIT_SUCCESS;
+    bool error = false;
 
-    char *query = (char *) calloc(512, sizeof(char));
-    
-    sprintf(
-        query,
-        "INSERT INTO funcionario (cpf, nome, endereco, salario, cod_setor, data_Admissao) VALUES ('%s', '%s', '%s', %2lf, %d, NOW());",
-        employee->cpf,
-        employee->name,
-        employee->address,
-        employee->salary,
-        employee->sector_code
-    );
+    if (employee->cpf[ 0 ] == '\000')
+    {
+        screen_warning("Field 'CPF' was not inserted properly.");
+        error = true;
+    }
+    if (employee->name[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Name' was not inserted properly.");
+        error = true;
+    }
+    if (employee->address[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Address' was not inserted properly.");
+        error = true;
+    }
+    if (employee->salary == -1.0)
+    {
+        screen_warning("Field 'Salary' was not inserted properly.");
+        error = true;
+    }
+    if (employee->sector_code == -1)
+    {
+        screen_warning("Field 'Sector' was not inserted properly.");
+        error = true;
+    }
 
-    return make_query(connection, query);
+    if (!error)
+    {
+        char *query = (char *) calloc(512, sizeof(char));
+        
+        sprintf(
+            query,
+            "INSERT INTO funcionario (cpf, nome, endereco, salario, cod_setor, data_Admissao) VALUES ('%s', '%s', '%s', %2lf, %d, NOW());",
+            employee->cpf,
+            employee->name,
+            employee->address,
+            employee->salary,
+            employee->sector_code
+        );
+
+        make_query(connection, query);
+    }
+
+    return EXIT_SUCCESS;
 }
 
 
@@ -711,32 +799,67 @@ screen_new_car( MYSQL *connection )
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    if (strcmp(car->model  , "")) return EXIT_SUCCESS;
-    if (strcmp(car->chassis, "")) return EXIT_SUCCESS;
-    if (strcmp(car->brand  , "")) return EXIT_SUCCESS;
-    if (car->cost_value  == -1.0) return EXIT_SUCCESS;
-    if (car->sell_value  == -1.0) return EXIT_SUCCESS;
-    if (car->sector_code == -1)   return EXIT_SUCCESS;
-    if (car->year        == -1)   return EXIT_SUCCESS;
+    bool error = false;
 
-    char *query = (char *) calloc(512, sizeof(char));
+    if (car->brand[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Brand' was not inserted properly.");
+        error = true;
+    }
+    if (car->model[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Model' was not inserted properly.");
+        error = true;
+    }
+    if (car->cost_value == -1.0)
+    {
+        screen_warning("Field 'Cost' was not inserted properly.");
+        error = true;
+    }
+    if (car->sell_value == -1.0)
+    {
+        screen_warning("Field 'Value' was not inserted properly.");
+        error = true;
+    }
+    if (car->year == -1)
+    {
+        screen_warning("Field 'Year' was not inserted properly.");
+        error = true;
+    }
+    if (car->chassis[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Chassis' was not inserted properly.");
+        error = true;
+    }
+    // if (car->sector_code == -1)
+    // {
+    //     screen_warning("Field Sector was not inserted properly.");
+    //     error = true;
+    // }
 
-    sprintf(
-        query,
-        "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, valor_venda, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %2lf, %2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
-        car->model,
-        car->chassis,
-        car->brand,
-        car->year,
-        car->cost_value,
-        car->sell_value,
-        car->is_sell,
-        car->is_new,
-        car->is_trade,
-        car->sector_code
-    );
+    if (!error)
+    {
+        char *query = (char *) calloc(512, sizeof(char));
 
-    return make_query(connection, query);
+        sprintf(
+            query,
+            "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, valor_venda, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %2lf, %2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
+            car->model,
+            car->chassis,
+            car->brand,
+            car->year,
+            car->cost_value,
+            car->sell_value,
+            car->is_sell,
+            car->is_new,
+            car->is_trade,
+            car->sector_code
+        );
+
+        make_query(connection, query);
+    }
+    
+    return EXIT_SUCCESS;
 }
 
 
@@ -763,19 +886,34 @@ screen_new_sector( MYSQL *connection )
     }
     while (!screen_yes_no(k_question_data, k_question_data_size));
 
-    if (strcmp(sector->name, ""))  return EXIT_SUCCESS;
-    if (sector->agency_code == -1) return EXIT_SUCCESS;
+    bool error = false;
 
-    char *query = (char *) calloc(512, sizeof(char));
+    if (sector->name[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Name' was not inserted properly.");
+        error = true;
+    }
+    if (sector->agency_code == -1)
+    {
+        screen_warning("Field 'Agency' was not inserted properly.");
+        error = true;
+    }
+
+    if (!error)
+    {
+        char *query = (char *) calloc(512, sizeof(char));
+        
+        sprintf(
+            query,
+            "INSERT INTO setor (cod_agencia, nome) VALUES (%d, '%s');",
+            sector->agency_code,
+            sector->name
+        );
+
+        make_query(connection, query);
+    }
     
-    sprintf(
-        query,
-        "INSERT INTO setor (cod_agencia, nome) VALUES (%d, '%s');",
-        sector->agency_code,
-        sector->name
-    );
-
-    return make_query(connection, query);
+    return EXIT_SUCCESS;
 }
 
 
@@ -857,7 +995,9 @@ screen_new_sector( MYSQL *connection )
 //     sprintf(query, "INSERT INTO funcionario(cpf, nome, endereco, salario, cod_setor, data_Admissao)\
 //                     VALUES (%s, %s, %s, %2lf, %d, %s);", cpf, name, address, salary, sector_code, get_current_date());
     
-//     return make_query(connection, query);
+    // make_query(connection, query);
+    
+    // return EXIT_SUCCESS;
 // }
 
 
@@ -878,7 +1018,9 @@ screen_new_sector( MYSQL *connection )
 //     sprintf(query, "INSERT INTO funcionario(cpf, nome, endereco, salario, cod_setor, data_Admissao)\
 //                     VALUES (%s, %s, %s, %2lf, %d, %s);", cpf, name, address, salary, sector_code, get_current_date());
 
-//     return make_query(connection, query);
+//     make_query(connection, query);
+    
+    // return EXIT_SUCCESS;
 // }
 
 
@@ -918,18 +1060,13 @@ int
 main( const int    argc ,
       const char **argv )
 {
-    FILE *file = fopen("error_output.txt", "w");
-    fclose(file);
-
-    if (init_api_ncurses()) return EXIT_FAILURE;
-    
     if (argc == 1)
     {
-        file = fopen("error_output.txt", "a");
-        fprintf(file, "%s %s", k_fatal_error, k_database_name_error);
-        fclose(file);
+        fprintf(stderr, "%s %s", k_fatal_error, k_database_name_error);
         return EXIT_FAILURE;
     }
+
+    if (init_api_ncurses()) return EXIT_FAILURE;
 
     MYSQL *connection = init_api_mysql(argv[ 1 ]);
     if (connection == NULL)
@@ -992,13 +1129,13 @@ main( const int    argc ,
             {
                 logged_in = false;
                 state = STOP;
+                screen_warning("A Window was not able to be allocated.");
             }
         }
     }
 
     close_api_mysql(connection);
     close_api_ncurses();
-    fclose(file);
 
     return EXIT_SUCCESS;
 }

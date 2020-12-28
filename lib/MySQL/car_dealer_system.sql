@@ -125,7 +125,3 @@ CREATE TABLE agendamento_revisao
     
     FOREIGN KEY (cod_produto_pedido) REFERENCES produto_pedido(cod)
 );
-
-
-
-SELECT NOW(),NOW() + INTERVAL 1 YEAR;
