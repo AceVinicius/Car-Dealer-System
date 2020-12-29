@@ -13,35 +13,34 @@
 struct client
 {
     int  employee_sector;
-    char client_cpf[ 15 ];
-    char name[ 33 ];
     char address[ 65 ];
+    char name[ 33 ];
     char telephone[ 16 ];
-    char plate[ 9 ];
+    char client_cpf[ 15 ];
     char employee_cpf[ 15 ];
+    char plate[ 9 ];
 };
 
 struct employee
 {
     double salary;
     int    sector_code;
-    char   cpf[ 15 ];
-    char   name[ 33 ];
     char   address[ 65 ] ;
+    char   name[ 33 ];
+    char   cpf[ 15 ];
 };
 
 struct car
 {
-    double sell_value;
     double cost_value;
     int sector_code;
     int year;
-    bool is_new;
-    char brand[ 33 ];
-    bool is_trade;
     char model[ 33 ];
-    bool is_sell;
+    char brand[ 33 ];
     char chassis[ 18 ];
+    bool is_trade;
+    bool is_sell;
+    bool is_new;
 };
 
 struct sector
@@ -53,9 +52,9 @@ struct sector
 
 
 typedef struct employee EMPLOYEE;
+typedef struct sector SECTOR;
 typedef struct client CLIENT;
 typedef struct car CAR;
-typedef struct sector SECTOR;
 
 
 
@@ -196,6 +195,7 @@ int screen_trade( MYSQL * );
 int screen_revision( MYSQL * );
 int screen_management( MYSQL * );
 int screen_new_sector( MYSQL * );
+int screen_bonus( MYSQL * );
 
 
 

@@ -212,21 +212,19 @@ template_print_car_info(       WINDOW *content ,
     mvwprintw(content, height +  1, width + (k_car_width - size) / 2, title);
 
     // Field Names
-    mvwprintw(content, height +   3, width +  4, "Brand");
-    mvwprintw(content, height +   6, width +  4, "Model");
-    mvwprintw(content, height +   9, width +  4, "Cost");
-    mvwprintw(content, height +   9, width + 22, "Value");
-    mvwprintw(content, height +  12, width +  4, "Year");
-    mvwprintw(content, height +  12, width + 13, "Chassis");
+    mvwprintw(content, height +  3, width +  4, "Brand");
+    mvwprintw(content, height +  6, width +  4, "Model");
+    mvwprintw(content, height +  9, width +  4, "Year");
+    mvwprintw(content, height +  9, width + 13, "Chassis");
+    mvwprintw(content, height + 12, width +  4, "Cost");
 
     // Placeholders
     wattron(content, COLOR_PAIR(5));
     mvwprintw(content, height +  4, width +  4, " Ford                             ");
     mvwprintw(content, height +  7, width +  4, " Mustang GT                       ");
-    mvwprintw(content, height + 10, width +  4, " R$ 1234567.89 ");
-    mvwprintw(content, height + 10, width + 22, " R$ 1234567.89 ");
-    mvwprintw(content, height + 13, width +  4, " 2018 ");
-    mvwprintw(content, height + 13, width + 13, " 0ABCD12E34F567890 ");
+    mvwprintw(content, height + 10, width +  4, " 2018 ");
+    mvwprintw(content, height + 10, width + 13, " 0ABCD12E34F567890 ");
+    mvwprintw(content, height + 13, width +  4, " R$ 1234567.89 ");
     wattroff(content, COLOR_PAIR(5));
 
     wrefresh(content);
@@ -253,22 +251,18 @@ template_get_car_info(       WINDOW *content ,
     mvwprintw(content, height +  7, width +  4, "                                  ");
     wrefresh(content);
     mvwscanw(content,  height +  7, width +  5, " %32[^\n]s%*c", car->model);
-    
-    mvwprintw(content, height + 10, width +  4, " R$            ");
-    wrefresh(content);
-    mvwscanw(content,  height + 10, width +  8, " %10d", &car->cost_value);
 
-    mvwprintw(content, height + 10, width +  22, " R$            ");
+    mvwprintw(content, height + 10, width +  4, "      ");
     wrefresh(content);
-    mvwscanw(content,  height + 10, width +  26, " %10d", &car->sell_value);
-
-    mvwprintw(content, height + 13, width +  4, "      ");
-    wrefresh(content);
-    mvwscanw(content,  height + 13, width +  5, " %4d", &car->year);
+    mvwscanw(content,  height + 10, width +  5, " %4d", &car->year);
     
-    mvwprintw(content, height + 13, width + 13, "                   ");
+    mvwprintw(content, height + 10, width + 13, "                   ");
     wrefresh(content);
-    mvwscanw(content,  height + 13, width + 14, " %17s", car->chassis);
+    mvwscanw(content,  height + 10, width + 14, " %17s", car->chassis);
+    
+    mvwprintw(content, height + 13, width +  4, " R$            ");
+    wrefresh(content);
+    mvwscanw(content,  height + 13, width +  8, " %10lf", &car->cost_value);
 
     wattroff(content, COLOR_PAIR(6));
     curs_set(0);
@@ -792,7 +786,6 @@ screen_new_car( MYSQL *connection )
 {
     CAR *car = (CAR *) calloc(1, sizeof(CAR));
 
-    car->sell_value  = -1.0;
     car->cost_value  = -1.0;
     car->sector_code = -1;
     car->year        = -1;
@@ -833,11 +826,6 @@ screen_new_car( MYSQL *connection )
         screen_warning("Field 'Cost' was not inserted properly.");
         error = true;
     }
-    if (compare_double(car->sell_value, -1.0))
-    {
-        screen_warning("Field 'Value' was not inserted properly.");
-        error = true;
-    }
     if (car->year == -1)
     {
         screen_warning("Field 'Year' was not inserted properly.");
@@ -848,11 +836,6 @@ screen_new_car( MYSQL *connection )
         screen_warning("Field 'Chassis' was not inserted properly.");
         error = true;
     }
-    // if (car->sector_code == -1)
-    // {
-    //     screen_warning("Field Sector was not inserted properly.");
-    //     error = true;
-    // }
 
     if (!error)
     {
@@ -860,13 +843,12 @@ screen_new_car( MYSQL *connection )
 
         sprintf(
             query,
-            "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, valor_venda, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %2lf, %2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
+            "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
             car->model,
             car->chassis,
             car->brand,
             car->year,
             car->cost_value,
-            car->sell_value,
             car->is_sell,
             car->is_new,
             car->is_trade,
@@ -935,87 +917,228 @@ screen_new_sector( MYSQL *connection )
 
 
 
-// int
-// screen_sell( MYSQL *connection )
-// {
-//     WINDOW *content = create_basic_layout(k_car_height, k_car_width);
-//     if (content == NULL)
-//     {
-//         return EXIT_FAILURE;
-//     }
+int
+screen_sell( MYSQL *connection )
+{
+    CLIENT *client = (CLIENT *) calloc(1, sizeof(CLIENT));
+    CAR *car = (CAR *) calloc(1, sizeof(CAR));
+
+    WINDOW *content = create_basic_layout(k_car_height, k_car_width);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    keypad(content, true);
+
+    template_print_car_info(content, "Sell", 0, 0);
+    template_get_car_info(content, car, 0, 0);
+
+    content = create_basic_layout(k_client_height, k_client_width);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    template_print_client_info(content, "Sell", 0, 0);
+    template_get_client_info(content, client, 0, 0);
+
+    bool error = false;
+
+    if (compare_double(car->cost_value, -1.0))
+    {
+        screen_warning("Field 'Cost' was not inserted properly.");
+        error = true;
+    }
+    if (car->chassis[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Chassis' was not inserted properly.");
+        error = true;
+    }
+    if (client->client_cpf[ 0 ] == '\000')
+    {
+        screen_warning("Field 'CPF' was not inserted properly.");
+        error = true;
+    }
+    if (client->employee_cpf[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Employee CPF' was not inserted properly.");
+        error = true;
+    }
+    if (client->employee_sector == -1)
+    {
+        screen_warning("Field 'Sector' was not inserted properly.");
+        error = true;
+    }
+    if (client->plate[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Plate' was not inserted properly.");
+        error = true;
+    }
+
+    if(!error)
+    {
+        char *query = (char *) calloc(512, sizeof(char));
+        
+        sprintf(
+            query,
+            "INSERT INTO pedido (cod_setor, cpf_cliente, cpf_funcionario) VALUES (%d, '%s', '%s'); INSERT INTO produto_pedido (placa_veiculo, valor_venda, valor_custo, is_trade, cod_pedido, chassi) VALUES ('%s', %.2lf, 0, LAST_INSERT_ID(), '%s');",
+            client->employee_sector,
+            client->client_cpf,
+            client->employee_cpf,
+            client->plate,
+            car->cost_value,
+            car->chassis
+        );
+
+        make_query(connection, query);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+
+int
+screen_trade( MYSQL *connection )
+{
+    CLIENT *client = (CLIENT *) calloc(1, sizeof(CLIENT));
+    CAR *car_1 = (CAR *) calloc(1, sizeof(CAR));
+    CAR *car_2 = (CAR *) calloc(1, sizeof(CAR));
+
+    WINDOW *content = create_basic_layout(k_car_height, 2 * k_car_width);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    keypad(content, true);
+
+    template_print_car_info(content, "Client", 0, 0);
+    template_print_car_info(content, "Dealer", 1, 0);
+    template_get_car_info(content, car_1, 0, 0);
     
-//     CAR *car = (CAR *) calloc(1, sizeof(CAR));
-
-//     keypad(content, true);
-
-//     template_print_car_info(content, "Sell", 0, 0);
-//     template_get_car_info(content, car, 0, 0);
-
-//     car->is_new   = screen_yes_no(k_question_new_car  , k_question_new_car_size);
-//     car->is_sell  = screen_yes_no(k_question_sell_car , k_question_sell_car_size);
-//     car->is_trade = screen_yes_no(k_question_trade_car, k_question_trade_car_size);
-
-//     char *query = (char *) calloc(512, sizeof(char));
+    car_1->is_trade = true;
+    car_1->is_sell = true;
+    car_1->is_new = false;
     
-//     sprintf(
-//         query,
-//         "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, valor_venda, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %2lf, %2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
-//         car->model,
-//         car->chassis,
-//         car->brand,
-//         car->year,
-//         car->cost_value,
-//         car->sell_value,
-//         car->is_sell,
-//         car->is_new,
-//         car->is_trade,
-//         car->sector_code
-//     );
+    template_get_car_info(content, car_2, 1, 0);
 
-//     return make_query(connection, query);
+    content = create_basic_layout(k_client_height, k_client_width);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
 
-//     return EXIT_SUCCESS;
-// }
+    template_print_client_info(content, "Trade", 0, 0);
+    template_get_client_info(content, client, 0, 0);
 
+    bool error = false;
 
+    if (car_1->brand[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Brand 1' was not inserted properly.");
+        error = true;
+    }
+    if (car_1->model[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Model 1' was not inserted properly.");
+        error = true;
+    }
+    if (compare_double(car_1->cost_value, -1.0))
+    {
+        screen_warning("Field 'Cost 1' was not inserted properly.");
+        error = true;
+    }
+    if (car_1->year == -1)
+    {
+        screen_warning("Field 'Year 1' was not inserted properly.");
+        error = true;
+    }
+    if (car_1->chassis[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Chassis 1' was not inserted properly.");
+        error = true;
+    }
+    if (compare_double(car_2->cost_value, -1.0))
+    {
+        screen_warning("Field 'Cost 2' was not inserted properly.");
+        error = true;
+    }
+    if (car_2->chassis[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Chassis 2' was not inserted properly.");
+        error = true;
+    }
+    if (client->client_cpf[ 0 ] == '\000')
+    {
+        screen_warning("Field 'CPF' was not inserted properly.");
+        error = true;
+    }
+    if (client->employee_cpf[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Employee CPF' was not inserted properly.");
+        error = true;
+    }
+    if (client->employee_sector == -1)
+    {
+        screen_warning("Field 'Sector' was not inserted properly.");
+        error = true;
+    }
+    if (client->plate[ 0 ] == '\000')
+    {
+        screen_warning("Field 'Plate' was not inserted properly.");
+        error = true;
+    }
 
-// int
-// screen_trade( MYSQL *connection )
-// {
-//     WINDOW *content = create_basic_layout(k_car_height, 2 * k_car_width);
-//     if (content == NULL)
-//     {
-//         return EXIT_FAILURE;
-//     }
+    if (!error)
+    {
+        char *query = (char *) calloc(512, sizeof(char));
 
-//     char  brand_client[ 31 ] = "*";
-//     char  model_client[ 31 ] = "*";
-//     char  plate_client[ 8 ]  = "*";
-//     short year_client = -1;
+        sprintf(
+            query,
+            "INSERT INTO modelo (modelo) VALUES ('%s'); INSERT INTO carro (chassi, marca, ano, valor_custo, is_venda, is_novo, is_troca, cod_setor, cod_modelo) VALUES ('%s', '%s', %d, %.2lf, %d, %d, %d, %d, LAST_INSERT_ID());",
+            car_1->model,
+            car_1->chassis,
+            car_1->brand,
+            car_1->year,
+            car_1->cost_value,
+            car_1->is_sell,
+            car_1->is_new,
+            car_1->is_trade,
+            car_1->sector_code
+        );
 
-//     char  brand_dealer[ 31 ] = "*";
-//     char  model_dealer[ 31 ] = "*";
-//     char  plate_dealer[ 8 ]  = "*";
-//     short year_dealer = -1;
-
-//     keypad(content, true);
-
-//     template_print_car_info(content, "Client", 0, 0);
-//     template_print_car_info(content, "Dealer", 1, 0);
-//     template_get_car_info(content, 0, 0, brand_client, model_client, &year_client, plate_client);
-//     template_get_car_info(content, 1, 0, brand_dealer, model_dealer, &year_dealer, plate_dealer);
-
-//     bool is_new_dealer = screen_yes_no(k_question_new_car, k_question_new_car_size);
-
-//     char *query = (char *) calloc(512, sizeof(char));
+        make_query(connection, query);
     
-//     sprintf(query, "INSERT INTO funcionario(cpf, nome, endereco, salario, cod_setor, data_Admissao)\
-//                     VALUES (%s, %s, %s, %2lf, %d, %s);", cpf, name, address, salary, sector_code, get_current_date());
+        query = (char *) calloc(512, sizeof(char));
+        
+        sprintf(
+            query,
+            "INSERT INTO pedido (cod_setor, cpf_cliente, cpf_funcionario) VALUES (%d, '%s', '%s'); INSERT INTO produto_pedido (placa_veiculo, valor_custo, is_trade, cod_pedido, chassi) VALUES ('%s', %2lf, 0, LAST_INSERT_ID(), '%s'');",
+            client->employee_sector,
+            client->client_cpf,
+            client->employee_cpf,
+            client->plate,
+            car_2->cost_value,
+            car_2->chassis
+        );
+
+        make_query(connection, query);
+
+        query = (char *) calloc(512, sizeof(char));
+        
+        sprintf(
+            query,
+            "DELETE FROM carro WHERE chassis = %s;",
+            car_2->chassis
+        );
+
+        make_query(connection, query);
+    }
     
-    // make_query(connection, query);
-    
-    // return EXIT_SUCCESS;
-// }
+    return EXIT_SUCCESS;
+}
 
 
 
@@ -1037,8 +1160,382 @@ screen_new_sector( MYSQL *connection )
 
 //     make_query(connection, query);
     
-    // return EXIT_SUCCESS;
+//     return EXIT_SUCCESS;
 // }
+
+
+
+int
+screen_bonus( MYSQL *connection )
+{
+    const int width  = 40 + 2 * MARGIN;
+    const int height = 50 + 2 * PADDING;
+    int i = 3;
+    MYSQL_RES *result;
+    MYSQL_ROW row;
+
+    WINDOW *content = create_basic_layout(height, width);
+    if (content == NULL)
+    {
+        return EXIT_FAILURE;
+    }
+
+    mvwprintw(content, 1, (18) / 2, "Useful Information");
+    wrefresh(content);
+
+    wattron(content, COLOR_PAIR(6));
+
+    /* Query 1 */
+
+
+    ++i;
+    /* Query 2 */
+
+
+    ++i;    
+    /* Query 3 */
+    char *query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT SUM(valor_venda) - SUM(valor_custo) AS Lucro FROM produto_pedido AS prod INNER JOIN pedido AS ped ON prod.cod_pedido = ped.cod WHERE data_pedido >= '2000-02-02 00:00:00';"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+    
+    
+    ++i;
+    /* Query 4 */
+
+
+    ++i;
+    /* Query 5 */
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT cod_agencia, SUM(salario) FROM funcionario AS f LEFT JOIN setor AS s ON f.cod_setor = s.cod WHERE cod_agencia = 10 GROUP BY cod_agencia;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+
+
+    ++i;
+    /* Query 6 */
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT cod_setor, COUNT(cpf), SUM(salario) FROM funcionario AS f GROUP BY cod_setor;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+    
+
+    ++i;
+    /* Query 7 */
+
+
+    ++i;    
+    /* Query 8 */
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT cpf_cliente, SUM(valor_venda) FROM pedido AS ped LEFT JOIN produto_pedido AS prod ON ped.cod = prod.cod_pedido GROUP BY cpf_cliente;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+
+
+    ++i;
+    /* Query 9 */
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT modelo, COUNT(modelo), SUM(valor_venda) FROM carro AS c INNER JOIN modelo AS m ON c.cod_modelo = m.cod GROUP BY modelo;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+
+
+    ++i;
+    /* Query 10 */
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT * FROM pedido AS ped LEFT JOIN produto_pedido AS prod ON ped.cod = prod.cod_pedido WHERE data_pedido < NOW() - INTERVAL 3 YEAR AND is_troca = 1;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+
+
+    ++i;
+    /* Query 11 */
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT cpf_funcionario FROM (SELECT cpf_funcionario, SUM(valor_venda) - SUM(valor_custo) AS Lucro FROM (SELECT cod, cpf_funcionario FROM pedido AS p LEFT JOIN funcionario AS f ON p.cpf_funcionario = f.cpf) AS k LEFT JOIN produto_pedido AS prod ON prod.cod_pedido = k.cod WHERE is_troca = 0 GROUP BY cpf_funcionario ORDER BY Lucro DESC LIMIT 1) AS t;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+    
+    ++i;
+
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT cpf_funcionario FROM (SELECT cpf_funcionario, SUM(valor_venda) - SUM(valor_custo) AS Lucro FROM (SELECT cod, cpf_funcionario FROM pedido AS p LEFT JOIN funcionario AS f ON p.cpf_funcionario = f.cpf) AS k LEFT JOIN produto_pedido AS prod ON prod.cod_pedido = k.cod WHERE is_troca = 0 GROUP BY cpf_funcionario ORDER BY Lucro LIMIT 1) AS t;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+    
+
+    ++i;
+    /* Query 12 */
+    query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "UPDATE funcionario SET salario = salario * 1.06 WHERE cpf IN (SELECT cpf_funcionario FROM (SELECT cpf_funcionario, SUM(valor_venda) - SUM(valor_custo) AS Lucro FROM (SELECT cod, cpf_funcionario FROM pedido AS p LEFT JOIN funcionario AS f ON p.cpf_funcionario = f.cpf WHERE data_pedido > NOW() - INTERVAL 1 MONTH) AS k LEFT JOIN produto_pedido AS prod ON prod.cod_pedido = k.cod GROUP BY cpf_funcionario ORDER BY Lucro DESC LIMIT 1) AS t);"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+    
+
+    mysql_free_result(result);
+
+
+    ++i;
+    /* Query 13 */
+
+
+    ++i;
+    /* Query 14 */
+        query = (char *) calloc(512, sizeof(char));
+
+    sprintf(
+        query,
+        "SELECT cpf_cliente, SUM(valor_venda) AS Gasto FROM pedido AS ped LEFT JOIN produto_pedido AS prod ON ped.cod = prod.cod_pedido GROUP BY cpf_cliente ORDER BY Gasto DESC;"
+    );
+
+    if (mysql_query(connection, query))
+    {
+        error_api_mysql(connection);
+        return EXIT_FAILURE;
+    }
+
+    result = mysql_use_result(connection);
+    
+    if (result != NULL)
+    {
+        while ((row = mysql_fetch_row(result)) != NULL)
+        {
+            for (unsigned int k = 0; k < mysql_num_fields (result); k++)
+            {
+                mvwprintw(content, ++i, 4, "%s", row[ k ] != NULL ? row[ k ] : "NULL");
+                wrefresh(content);
+            }
+        }
+    }
+
+    mysql_free_result(result);
+
+
+    /* Query 15 */
+    wattroff(content, COLOR_PAIR(6));
+
+    wattron(content, COLOR_PAIR(4));
+    mvwprintw(content, 3, (width - 2) / 2, "OK");
+    wattroff(content, COLOR_PAIR(4));
+    wrefresh(content);
+
+    wgetch(content);
+
+    return EXIT_SUCCESS;
+}
 
 
 
@@ -1054,7 +1551,7 @@ screen_management( MYSQL *connection )
         {
             case 0: error = screen_new_sector(connection);   break;
             case 1: error = screen_new_employee(connection); break;
-            case 2: /* error = screen_bonus(connection); */      break;
+            case 2: error = screen_bonus(connection);        break;
             case 3: state = STOP;                            break;
             default: break;
         }
@@ -1120,8 +1617,8 @@ main( const int    argc ,
                 {
                     case 0: error = screen_new_client(connection); break;
                     case 1: error = screen_new_car(connection);    break;
-                    case 2: /*error = screen_sell(connection);*/       break;
-                    case 3: /*error = screen_trade(connection);*/      break;
+                    case 2: error = screen_sell(connection);       break;
+                    case 3: error = screen_trade(connection);      break;
                     case 4: /*error = screen_revision(connection);*/   break;
                     case 5: error = screen_management(connection); break;
                     case 6: logged_in = false;                     break;
@@ -1134,8 +1631,8 @@ main( const int    argc ,
                 {
                     case 0: error = screen_new_client(connection); break;
                     case 1: error = screen_new_car(connection);    break;
-                    case 2: /*error = screen_sell(connection);*/       break;
-                    case 3: /*error = screen_trade(connection);*/      break;
+                    case 2: error = screen_sell(connection);       break;
+                    case 3: error = screen_trade(connection);      break;
                     case 4: /*error = screen_revision(connection);*/   break;
                     case 5: logged_in = false;                     break;
                     default: break;

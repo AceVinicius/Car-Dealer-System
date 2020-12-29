@@ -30,7 +30,7 @@ CREATE TABLE funcionario
     endereco      VARCHAR(64) NOT NULL,
     salario       DOUBLE      NOT NULL,
     cod_setor     INTEGER     NOT NULL,
-    data_admissao DATETIME    NOT NULL,
+    data_admissao DATETIME    NOT NULL DEFAULT NOW(),
     data_demissao DATETIME    NULL,
 
     PRIMARY KEY (cpf),
@@ -60,7 +60,7 @@ CREATE TABLE pedido
     cod_setor       INTEGER     NOT NULL,
     cpf_cliente     VARCHAR(14) NOT NULL,
     cpf_funcionario VARCHAR(14) NOT NULL,
-    data_pedido     DATETIME    NOT NULL,
+    data_pedido     DATETIME    NOT NULL DEFAULT NOW(),
     valor_pedido    DOUBLE      NOT NULL,
 
     PRIMARY KEY (cod),
@@ -85,12 +85,11 @@ CREATE TABLE carro
     ano         INTEGER     NOT NULL,
     valor_custo DOUBLE      NOT NULL,
     valor_venda DOUBLE      NOT NULL,
-    qtd_estoque INTEGER     NULL,
     is_venda    INTEGER     NOT NULL,
     is_novo     INTEGER     NOT NULL,
     is_troca    INTEGER     NOT NULL,
     cod_setor   INTEGER     NOT NULL,
-    cod_modelo  INTEGER     NOT NULL,
+    cod_modelo  INTEGER     NOT NULL ON DELETE CASCADE,
 
     PRIMARY KEY (chassi),
     
@@ -125,3 +124,8 @@ CREATE TABLE agendamento_revisao
     
     FOREIGN KEY (cod_produto_pedido) REFERENCES produto_pedido(cod)
 );
+
+
+-- TRIGGERS
+
+UPDATE produto_pedido SET valor_venda = valor_custo * 1.10;
